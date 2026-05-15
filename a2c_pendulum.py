@@ -31,22 +31,37 @@ def initialize_uniformly(layer: nn.Linear, init_w: float = 3e-3):
 
 
 class Actor(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int):
+    def __init__(
+        self,
+        in_dim: int,
+        out_dim: int,
+        init_log_std: float = 0.0,
+        min_log_std: float = -5.0,
+        max_log_std: float = 2.0,
+    ):
         """Initialize."""
         super(Actor, self).__init__()
         self.fc1 = nn.Linear(in_dim, 128)
         self.fc2 = nn.Linear(128, 128)
         self.mu = nn.Linear(128, out_dim)
-        self.log_std = nn.Parameter(torch.zeros(out_dim))
+        self.log_std = nn.Parameter(torch.full((out_dim,), float(init_log_std)))
+        self.min_log_std = float(min_log_std)
+        self.max_log_std = float(max_log_std)
 
         initialize_uniformly(self.mu)
+
+    def set_log_std_bounds(self, min_log_std: float, max_log_std: float) -> None:
+        """Update action log standard deviation clamp bounds."""
+        self.min_log_std = float(min_log_std)
+        self.max_log_std = float(max_log_std)
         
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         mean = 2.0 * torch.tanh(self.mu(x))
-        std = self.log_std.exp().expand_as(mean)
+        log_std = self.log_std.clamp(self.min_log_std, self.max_log_std)
+        std = log_std.exp().expand_as(mean)
         dist = Normal(mean, std)
         action = dist.sample()
 
@@ -102,6 +117,9 @@ class A2CAgent:
         self.n_step = int(getattr(args, "n_step", 5))
         self.reward_scale = float(getattr(args, "reward_scale", 10.0))
         self.normalize_advantage = not bool(getattr(args, "disable_advantage_norm", False))
+        self.init_log_std = float(getattr(args, "init_log_std", 0.0))
+        self.min_log_std = float(getattr(args, "min_log_std", -5.0))
+        self.max_log_std = float(getattr(args, "max_log_std", 2.0))
         self.use_wandb = bool(getattr(args, "use_wandb", False)) and wandb is not None
         self.save_dir = Path(getattr(args, "save_dir", "."))
         model_path = Path(getattr(args, "model_path", "LAB7_314553032_task1_a2c_pendulum.pt"))
@@ -119,6 +137,10 @@ class A2CAgent:
             raise ValueError("--n-step must be at least 1")
         if self.reward_scale <= 0:
             raise ValueError("--reward-scale must be greater than 0")
+        if self.min_log_std > self.max_log_std:
+            raise ValueError("--min-log-std must be less than or equal to --max-log-std")
+        if not self.min_log_std <= self.init_log_std <= self.max_log_std:
+            raise ValueError("--init-log-std must be within [--min-log-std, --max-log-std]")
         
         # device: cpu / gpu
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -127,7 +149,13 @@ class A2CAgent:
         # networks
         obs_dim = env.observation_space.shape[0]
         action_dim = env.action_space.shape[0]
-        self.actor = Actor(obs_dim, action_dim).to(self.device)
+        self.actor = Actor(
+            obs_dim,
+            action_dim,
+            init_log_std=self.init_log_std,
+            min_log_std=self.min_log_std,
+            max_log_std=self.max_log_std,
+        ).to(self.device)
         self.critic = Critic(obs_dim).to(self.device)
 
         # optimizer
@@ -174,6 +202,9 @@ class A2CAgent:
             "score": float(score),
             "seed": int(self.seed),
             "selection_metric": selection_metric,
+            "init_log_std": float(self.init_log_std),
+            "min_log_std": float(self.actor.min_log_std),
+            "max_log_std": float(self.actor.max_log_std),
         }
         if eval_seed_start is not None and eval_seed_end is not None:
             checkpoint["eval_mean_reward"] = float(score)
@@ -203,6 +234,10 @@ class A2CAgent:
             checkpoint = torch.load(model_path, map_location=self.device)
         self.actor.load_state_dict(checkpoint["actor"])
         self.critic.load_state_dict(checkpoint["critic"])
+        if "min_log_std" in checkpoint and "max_log_std" in checkpoint:
+            self.actor.set_log_std_bounds(checkpoint["min_log_std"], checkpoint["max_log_std"])
+            self.min_log_std = float(checkpoint["min_log_std"])
+            self.max_log_std = float(checkpoint["max_log_std"])
         self.loaded_training_step = int(checkpoint.get("total_step", 0))
         self.best_score = float(checkpoint.get("score", -float("inf")))
 
@@ -302,6 +337,8 @@ class A2CAgent:
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
         self.actor_optimizer.step()
+        with torch.no_grad():
+            self.actor.log_std.clamp_(self.actor.min_log_std, self.actor.max_log_std)
 
         return policy_loss.item(), value_loss.item()
 
@@ -366,6 +403,11 @@ class A2CAgent:
                         "critic loss": critic_loss,
                         "n_step": self.n_step,
                         "reward_scale": self.reward_scale,
+                        "action/log_std": self.actor.log_std.detach().mean().item(),
+                        "action/clamped_log_std": self.actor.log_std.detach().clamp(
+                            self.actor.min_log_std,
+                            self.actor.max_log_std,
+                        ).mean().item(),
                     }) 
                 # if episode ends
                 if done:
@@ -439,6 +481,9 @@ if __name__ == "__main__":
     parser.add_argument("--n-step", type=int, default=5)
     parser.add_argument("--reward-scale", type=float, default=10.0)
     parser.add_argument("--disable-advantage-norm", action="store_true")
+    parser.add_argument("--init-log-std", type=float, default=0.0)
+    parser.add_argument("--min-log-std", type=float, default=-5.0)
+    parser.add_argument("--max-log-std", type=float, default=2.0)
     parser.add_argument("--model-path", type=str, default="LAB7_314553032_task1_a2c_pendulum.pt")
     parser.add_argument("--eval-model-path", type=str, default="LAB7_314553032_task1_a2c_pendulum_evalbest.pt")
     parser.add_argument("--eval-interval", type=int, default=20000)
