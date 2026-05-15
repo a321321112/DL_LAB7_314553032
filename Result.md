@@ -562,7 +562,7 @@ Recommended next code-level changes, in priority order:
 1. Implemented: n-step returns for A2C, controlled by `--n-step`.
 2. Implemented: advantage normalization before actor update, enabled by default.
 3. Implemented: optional reward scaling, controlled by `--reward-scale`.
-4. Next possible change: add explicit action standard deviation control, such as `--init-log-std` and optional lower clamp, because some seeds appear to need more reliable torque selection rather than more random exploration.
+4. Implemented after run 6: explicit action standard deviation control with `--init-log-std`, `--min-log-std`, and `--max-log-std`.
 
 Recommended next experiment after code changes:
 
@@ -687,5 +687,29 @@ For reporting, use the explicit `step` metric or the checkpoint field `training_
 ### Run 6 Next Actions
 
 - Do not continue tuning only `n-step` yet; run 6 shows faster early improvement but no better final robustness.
-- The next useful code-level change is action distribution control: add `--init-log-std`, `--min-log-std`, and `--max-log-std`, then try a lower or scheduled exploration variance.
-- If staying within current code, try one ablation before larger changes: `--n-step 10 --reward-scale 10.0 --entropy-weight 1e-4`, but expect limited improvement because the hard-seed pattern did not change.
+- Implemented after run 6: action distribution control with configurable Gaussian `log_std` initialization and clamp bounds.
+- Next experiment should reduce exploration variance directly: `--init-log-std -0.5 --min-log-std -2.0 --max-log-std 0.5 --entropy-weight 1e-4`.
+- If hard seeds still fail, compare W&B `action/log_std` and `action/clamped_log_std` against evaluation mean reward before changing learning rates again.
+
+Recommended next experiment after action std control:
+
+```bash
+python a2c_pendulum.py \
+  --mode train \
+  --num-episodes 2500 \
+  --actor-lr 3e-5 \
+  --critic-lr 3e-4 \
+  --entropy-weight 1e-4 \
+  --discount-factor 0.9 \
+  --n-step 5 \
+  --reward-scale 10.0 \
+  --init-log-std -0.5 \
+  --min-log-std -2.0 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_logstd.pt \
+  --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --wandb-run-name pendulum-a2c-logstd-evalbest
+```
