@@ -11,6 +11,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 1 run 3 | A2C | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_v3.pt` | 368,800 | -161.347 | > -150 | Not passed |
 | Task 1 run 4 | A2C | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_v4.pt` | 550,400 | -168.578 | > -150 | Not passed |
 | Task 1 run 5 | A2C + eval-best checkpoint | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest.pt` | 500,000 | -160.474 | > -150 | Not passed |
+| Task 1 run 6 | A2C + n-step + eval-best checkpoint | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt` | 480,000 | -161.588 | > -150 | Not passed |
 | Task 2 | PPO-Clip + GAE | `Pendulum-v1` | Pending | Pending | Pending | > -150 | Pending |
 | Task 3 | PPO-Clip + GAE | `Walker2d-v5` | Pending | Pending | Pending | >= 2500 | Pending |
 
@@ -25,6 +26,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Run 3 | `LAB7_314553032_task1_a2c_pendulum_v3.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 5e-4 | `pendulum-a2c-lr3e5-ent5e4` | User-provided command. |
 | Run 4 | `LAB7_314553032_task1_a2c_pendulum_v4.pt` | 3000 | 1e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-lr1e5-critic3e4-ent1e4` | User-provided command; lower actor LR and entropy did not improve final 20-seed mean. |
 | Run 5 | `LAB7_314553032_task1_a2c_pendulum_evalbest.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 5e-4 | `pendulum-a2c-evalbest-lr3e5-ent5e4` | Uses periodic 20-seed eval-best checkpointing every 20000 steps. |
+| Run 6 | `LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 5e-4 | `pendulum-a2c-nstep-evalbest` | Adds `--n-step 5`, `--reward-scale 10.0`, and default advantage normalization. |
 
 ### Run 1 Evaluation Metadata
 
@@ -581,3 +583,109 @@ python a2c_pendulum.py \
   --eval-seed-end 19 \
   --wandb-run-name pendulum-a2c-nstep-evalbest
 ```
+
+### Run 6 Training Command
+
+```bash
+python a2c_pendulum.py \
+  --mode train \
+  --num-episodes 2500 \
+  --actor-lr 3e-5 \
+  --critic-lr 3e-4 \
+  --entropy-weight 5e-4 \
+  --discount-factor 0.9 \
+  --n-step 5 \
+  --reward-scale 10.0 \
+  --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_nstep.pt \
+  --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --wandb-run-name pendulum-a2c-nstep-evalbest
+```
+
+### Run 6 Evaluation Metadata
+
+- Date: 2026-05-15
+- Algorithm: A2C with n-step rollout updates, reward scaling, advantage normalization, and periodic eval-best checkpointing
+- Environment: `Pendulum-v1`
+- Model snapshot: `LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt`
+- Training environment steps in checkpoint: `480000`
+- Evaluation seeds: `0` to `19`
+- Number of evaluation episodes: `20`
+- Mean reward: `-161.588`
+- Assignment target: average reward `> -150` over 20 evaluation episodes
+- Result: **Not passed**
+
+### Run 6 Evaluation Command
+
+```bash
+python a2c_pendulum.py \
+  --mode eval \
+  --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt \
+  --seed-start 0 \
+  --seed-end 19 \
+  --eval-episodes 20 \
+  --no-wandb
+```
+
+### Run 6 Per-Seed Rewards
+
+| Seed | Reward | Above -150 |
+| ---: | ---: | --- |
+| 0 | -130.826 | Yes |
+| 1 | -0.434 | Yes |
+| 2 | -126.203 | Yes |
+| 3 | -253.576 | No |
+| 4 | -270.215 | No |
+| 5 | -126.368 | Yes |
+| 6 | -0.479 | Yes |
+| 7 | -128.249 | Yes |
+| 8 | -131.157 | Yes |
+| 9 | -268.629 | No |
+| 10 | -351.910 | No |
+| 11 | -267.454 | No |
+| 12 | -133.671 | Yes |
+| 13 | -246.983 | No |
+| 14 | -264.012 | No |
+| 15 | -126.849 | Yes |
+| 16 | -2.491 | Yes |
+| 17 | -269.275 | No |
+| 18 | -130.963 | Yes |
+| 19 | -2.005 | Yes |
+
+### Run 6 Standard Check
+
+- Required average reward: `> -150`
+- Current average reward: `-161.588`
+- Gap to target: `11.588` reward points below target
+- Seeds above `-150`: `12 / 20`
+- Seeds below or equal to `-150`: `8 / 20`
+- Current checkpoint step: `480000`
+- Current conclusion: run 6 does **not** meet the Task 1 performance standard and is slightly worse than run 5 by `1.114` reward points.
+
+### Run 6 Comparison
+
+| Metric | Run 5 | Run 6 |
+| --- | ---: | ---: |
+| Env steps in selected checkpoint | 500,000 | 480,000 |
+| Mean reward | -160.474 | -161.588 |
+| Gap to target | 10.474 | 11.588 |
+| Seeds above -150 | 12 / 20 | 12 / 20 |
+
+Run 6 learns faster early in the W&B eval curve, but it converges to nearly the same fixed-seed performance band as run 5. The difficult seeds remain `3`, `4`, `9`, `10`, `11`, `13`, `14`, and `17`, so n-step returns and reward scaling did not solve the main robustness issue.
+
+### Why the Training Step Looks Smaller
+
+There are two separate meanings of step in this run:
+
+1. The checkpoint metadata `training_environment_step=480000` means the saved `evalbest_nstep` model was selected at environment step `480000`. The training run can continue after that, but the eval-best checkpoint only updates when the 20-seed mean reward improves. If later evaluations are worse, the saved checkpoint keeps the earlier step.
+2. The W&B chart x-axis labeled `Step` is W&B's internal logging step, not necessarily the environment step. After switching to `--n-step 5`, actor/critic losses are logged once per rollout update instead of once per environment transition. That reduces the number of W&B log rows by roughly a factor of 5, so the orange curve can visually end around a smaller x-axis value even though the logged `step` metric still reaches about `500000` environment steps.
+
+For reporting, use the explicit `step` metric or the checkpoint field `training_environment_step`, not W&B's internal x-axis step count.
+
+### Run 6 Next Actions
+
+- Do not continue tuning only `n-step` yet; run 6 shows faster early improvement but no better final robustness.
+- The next useful code-level change is action distribution control: add `--init-log-std`, `--min-log-std`, and `--max-log-std`, then try a lower or scheduled exploration variance.
+- If staying within current code, try one ablation before larger changes: `--n-step 10 --reward-scale 10.0 --entropy-weight 1e-4`, but expect limited improvement because the hard-seed pattern did not change.
