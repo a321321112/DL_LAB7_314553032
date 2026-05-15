@@ -99,6 +99,9 @@ class A2CAgent:
         self.actor_lr = args.actor_lr
         self.critic_lr = args.critic_lr
         self.num_episodes = args.num_episodes
+        self.n_step = int(getattr(args, "n_step", 5))
+        self.reward_scale = float(getattr(args, "reward_scale", 10.0))
+        self.normalize_advantage = not bool(getattr(args, "disable_advantage_norm", False))
         self.use_wandb = bool(getattr(args, "use_wandb", False)) and wandb is not None
         self.save_dir = Path(getattr(args, "save_dir", "."))
         model_path = Path(getattr(args, "model_path", "LAB7_314553032_task1_a2c_pendulum.pt"))
@@ -112,6 +115,10 @@ class A2CAgent:
         self.best_score = -float("inf")
         self.eval_best_score = -float("inf")
         self.loaded_training_step = 0
+        if self.n_step < 1:
+            raise ValueError("--n-step must be at least 1")
+        if self.reward_scale <= 0:
+            raise ValueError("--reward-scale must be greater than 0")
         
         # device: cpu / gpu
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -129,6 +136,7 @@ class A2CAgent:
 
         # transition (state, log_prob, entropy, next_state, reward, done)
         self.transition: list = list()
+        self.rollout: list = list()
 
         # total steps count
         self.total_step = 0
@@ -252,30 +260,43 @@ class A2CAgent:
         return next_state, reward, done
 
     def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Update the model by gradient descent."""
-        state, log_prob, entropy, next_state, reward, done = self.transition
+        """Update actor and critic with n-step returns from the rollout buffer."""
+        states = torch.stack([transition[0] for transition in self.rollout])
+        log_probs = torch.stack([transition[1] for transition in self.rollout])
+        entropies = torch.stack([transition[2] for transition in self.rollout])
+        rewards = [float(transition[4]) / self.reward_scale for transition in self.rollout]
+        dones = [bool(transition[5]) for transition in self.rollout]
+        last_next_state = torch.FloatTensor(self.rollout[-1][3]).to(self.device)
+        last_done = dones[-1]
 
-        # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        mask = torch.tensor(1.0 - float(done), device=self.device)
-        reward = torch.tensor(reward, dtype=torch.float32, device=self.device)
-        next_state = torch.FloatTensor(next_state).to(self.device)
-
-        value = self.critic(state).squeeze(-1)
         with torch.no_grad():
-            next_value = self.critic(next_state).squeeze(-1)
-            td_target = reward + self.gamma * next_value * mask
+            running_return = torch.tensor(0.0, device=self.device)
+            if not last_done:
+                running_return = self.critic(last_next_state).squeeze(-1)
 
-        value_loss = F.mse_loss(value, td_target)
+            returns = []
+            for reward, done in zip(reversed(rewards), reversed(dones)):
+                if done:
+                    running_return = torch.tensor(0.0, device=self.device)
+                running_return = torch.tensor(reward, dtype=torch.float32, device=self.device) + self.gamma * running_return
+                returns.insert(0, running_return)
+            returns = torch.stack(returns)
+
+        values = self.critic(states).squeeze(-1)
+        advantages = returns - values
+        actor_advantages = advantages.detach()
+        if self.normalize_advantage and actor_advantages.numel() > 1:
+            actor_advantages = (actor_advantages - actor_advantages.mean()) / (
+                actor_advantages.std(unbiased=False) + 1e-8
+            )
+
+        value_loss = F.mse_loss(values, returns)
+        policy_loss = -(log_probs * actor_advantages).mean() - self.entropy_weight * entropies.mean()
 
         # update value
         self.critic_optimizer.zero_grad()
         value_loss.backward()
         self.critic_optimizer.step()
-
-        # advantage = Q_t - V(s_t)
-        advantage = (td_target - value).detach()
-        policy_loss = -(log_prob * advantage) - self.entropy_weight * entropy
 
         # update policy
         self.actor_optimizer.zero_grad()
@@ -302,9 +323,13 @@ class A2CAgent:
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                actor_loss, critic_loss = self.update_model()
-                actor_losses.append(actor_loss)
-                critic_losses.append(critic_loss)
+                self.rollout.append(self.transition)
+                actor_loss, critic_loss = None, None
+                if len(self.rollout) >= self.n_step or done:
+                    actor_loss, critic_loss = self.update_model()
+                    self.rollout = []
+                    actor_losses.append(actor_loss)
+                    critic_losses.append(critic_loss)
 
                 state = next_state
                 score += reward
@@ -334,11 +359,13 @@ class A2CAgent:
                     next_eval_step += self.eval_interval
 
                 # W&B logging
-                if self.use_wandb:
+                if self.use_wandb and actor_loss is not None and critic_loss is not None:
                     wandb.log({
                         "step": self.total_step,
                         "actor loss": actor_loss,
                         "critic loss": critic_loss,
+                        "n_step": self.n_step,
+                        "reward_scale": self.reward_scale,
                     }) 
                 # if episode ends
                 if done:
@@ -409,6 +436,9 @@ if __name__ == "__main__":
     parser.add_argument("--num-episodes", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=77)
     parser.add_argument("--entropy-weight", type=float, default=1e-2) # entropy can be disabled by setting this to 0
+    parser.add_argument("--n-step", type=int, default=5)
+    parser.add_argument("--reward-scale", type=float, default=10.0)
+    parser.add_argument("--disable-advantage-norm", action="store_true")
     parser.add_argument("--model-path", type=str, default="LAB7_314553032_task1_a2c_pendulum.pt")
     parser.add_argument("--eval-model-path", type=str, default="LAB7_314553032_task1_a2c_pendulum_evalbest.pt")
     parser.add_argument("--eval-interval", type=int, default=20000)
