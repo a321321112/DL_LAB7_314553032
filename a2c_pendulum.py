@@ -110,7 +110,7 @@ class A2CAgent:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=self.actor_lr)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=self.critic_lr)
 
-        # transition (state, log_prob, next_state, reward, done)
+        # transition (state, log_prob, entropy, next_state, reward, done)
         self.transition: list = list()
 
         # total steps count
@@ -127,7 +127,8 @@ class A2CAgent:
 
         if not self.is_test:
             log_prob = dist.log_prob(selected_action).sum(dim=-1)
-            self.transition = [state, log_prob]
+            entropy = dist.entropy().sum(dim=-1)
+            self.transition = [state, log_prob, entropy]
 
         return selected_action.clamp(-2.0, 2.0).cpu().detach().numpy()
 
@@ -143,15 +144,20 @@ class A2CAgent:
 
     def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Update the model by gradient descent."""
-        state, log_prob, next_state, reward, done = self.transition
+        state, log_prob, entropy, next_state, reward, done = self.transition
 
         # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        mask = 1 - done
-        
-        ############TODO#############
-        # value_loss = ?
-        #############################
+        mask = torch.tensor(1.0 - float(done), device=self.device)
+        reward = torch.tensor(reward, dtype=torch.float32, device=self.device)
+        next_state = torch.FloatTensor(next_state).to(self.device)
+
+        value = self.critic(state).squeeze(-1)
+        with torch.no_grad():
+            next_value = self.critic(next_state).squeeze(-1)
+            td_target = reward + self.gamma * next_value * mask
+
+        value_loss = F.mse_loss(value, td_target)
 
         # update value
         self.critic_optimizer.zero_grad()
@@ -159,9 +165,9 @@ class A2CAgent:
         self.critic_optimizer.step()
 
         # advantage = Q_t - V(s_t)
-        ############TODO#############
-        # policy_loss = ?
-        #############################
+        advantage = (td_target - value).detach()
+        policy_loss = -(log_prob * advantage) - self.entropy_weight * entropy
+
         # update policy
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
