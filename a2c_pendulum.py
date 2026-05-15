@@ -16,9 +16,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Normal
 import argparse
-import wandb
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
+from pathlib import Path
 from tqdm import tqdm
-from typing import Tuple
+from typing import List, Tuple
 
 def initialize_uniformly(layer: nn.Linear, init_w: float = 3e-3):
     """Initialize the weights and bias in [-init_w, init_w]."""
@@ -95,6 +99,12 @@ class A2CAgent:
         self.actor_lr = args.actor_lr
         self.critic_lr = args.critic_lr
         self.num_episodes = args.num_episodes
+        self.use_wandb = bool(getattr(args, "use_wandb", False)) and wandb is not None
+        self.save_dir = Path(getattr(args, "save_dir", "."))
+        model_path = Path(getattr(args, "model_path", "LAB7_314553032_task1_a2c_pendulum.pt"))
+        self.model_path = model_path if model_path.is_absolute() else self.save_dir / model_path
+        self.best_score = -float("inf")
+        self.loaded_training_step = 0
         
         # device: cpu / gpu
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -118,6 +128,28 @@ class A2CAgent:
 
         # mode: train / test
         self.is_test = False
+
+    def save_model(self, score: float) -> None:
+        """Save the current actor and critic snapshot."""
+        self.model_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "actor": self.actor.state_dict(),
+                "critic": self.critic.state_dict(),
+                "total_step": self.total_step,
+                "score": score,
+                "seed": self.seed,
+            },
+            self.model_path,
+        )
+
+    def load_model(self, model_path: str) -> None:
+        """Load actor and critic weights from a saved snapshot."""
+        checkpoint = torch.load(model_path, map_location=self.device)
+        self.actor.load_state_dict(checkpoint["actor"])
+        self.critic.load_state_dict(checkpoint["critic"])
+        self.loaded_training_step = int(checkpoint.get("total_step", 0))
+        self.best_score = float(checkpoint.get("score", -float("inf")))
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input state."""
@@ -178,10 +210,9 @@ class A2CAgent:
     def train(self):
         """Train the agent."""
         self.is_test = False
-        step_count = 0
         
         state, _ = self.env.reset(seed=self.seed)
-        for ep in tqdm(range(1, self.num_episodes)):
+        for ep in tqdm(range(1, self.num_episodes + 1)):
             actor_losses, critic_losses, scores = [], [], []
             if ep > 1:
                 state, _ = self.env.reset()
@@ -198,22 +229,28 @@ class A2CAgent:
 
                 state = next_state
                 score += reward
-                step_count += 1
+                self.total_step += 1
                 # W&B logging
-                wandb.log({
-                    "step": step_count,
-                    "actor loss": actor_loss,
-                    "critic loss": critic_loss,
+                if self.use_wandb:
+                    wandb.log({
+                        "step": self.total_step,
+                        "actor loss": actor_loss,
+                        "critic loss": critic_loss,
                     }) 
                 # if episode ends
                 if done:
                     scores.append(score)
-                    print(f"Episode {ep}: Total Reward = {score}")
+                    if score > self.best_score:
+                        self.best_score = score
+                        self.save_model(score)
+                    print(f"Episode {ep}: Total Reward = {score} | Steps = {self.total_step}")
                     # W&B logging
-                    wandb.log({
-                        "episode": ep,
-                        "return": score
-                        })  
+                    if self.use_wandb:
+                        wandb.log({
+                            "episode": ep,
+                            "return": score,
+                            "best_return": self.best_score,
+                        })
 
     def test(self, video_folder: str):
         """Test the agent."""
@@ -238,6 +275,30 @@ class A2CAgent:
 
         self.env = tmp_env
 
+    def evaluate(self, seed_start: int, seed_end: int) -> Tuple[float, List[float]]:
+        """Evaluate the deterministic policy over an inclusive seed range."""
+        self.is_test = True
+        rewards: List[float] = []
+
+        for seed in range(seed_start, seed_end + 1):
+            state, _ = self.env.reset(seed=seed)
+            done = False
+            score = 0.0
+            while not done:
+                with torch.no_grad():
+                    action = self.select_action(state)
+                next_state, reward, done = self.step(action)
+                state = next_state
+                score += float(reward)
+            rewards.append(score)
+            print(f"seed={seed} reward={score:.3f}")
+
+        mean_reward = float(np.mean(rewards)) if rewards else 0.0
+        print(f"model_path={self.model_path}")
+        print(f"training_environment_step={self.loaded_training_step}")
+        print(f"mean_reward={mean_reward:.3f}")
+        return mean_reward, rewards
+
 def seed_torch(seed):
     torch.manual_seed(seed)
     if torch.backends.cudnn.enabled:
@@ -248,6 +309,7 @@ def seed_torch(seed):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", type=str, choices=["train", "eval"], default="train")
     parser.add_argument("--wandb-run-name", type=str, default="pendulum-a2c-run")
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=1e-3)
@@ -255,15 +317,34 @@ if __name__ == "__main__":
     parser.add_argument("--num-episodes", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=77)
     parser.add_argument("--entropy-weight", type=float, default=1e-2) # entropy can be disabled by setting this to 0
+    parser.add_argument("--model-path", type=str, default="LAB7_314553032_task1_a2c_pendulum.pt")
+    parser.add_argument("--save-dir", type=str, default=".")
+    parser.add_argument("--eval-episodes", type=int, default=20)
+    parser.add_argument("--seed-start", type=int, default=0)
+    parser.add_argument("--seed-end", type=int, default=19)
+    parser.add_argument("--no-wandb", action="store_true")
+    parser.add_argument("--render-video", action="store_true")
+    parser.add_argument("--video-folder", type=str, default="videos/a2c_pendulum")
     args = parser.parse_args()
+    args.use_wandb = not args.no_wandb
     
     # environment
     env = gym.make("Pendulum-v1", render_mode="rgb_array")
-    seed = 77
-    random.seed(seed)
-    np.random.seed(seed)
-    seed_torch(seed)
-    wandb.init(project="DLP-Lab7-A2C-Pendulum", name=args.wandb_run_name, save_code=True)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    seed_torch(args.seed)
+    if args.use_wandb and wandb is not None:
+        wandb.init(project="DLP-Lab7-A2C-Pendulum", name=args.wandb_run_name, save_code=True)
+    elif args.use_wandb and wandb is None:
+        print("wandb is not installed; continuing without W&B logging.")
+        args.use_wandb = False
     
     agent = A2CAgent(env, args)
-    agent.train()
+    if args.mode == "train":
+        agent.train()
+    else:
+        agent.load_model(str(agent.model_path))
+        if args.render_video:
+            agent.test(args.video_folder)
+        eval_seed_end = args.seed_start + args.eval_episodes - 1 if args.eval_episodes else args.seed_end
+        agent.evaluate(args.seed_start, min(args.seed_end, eval_seed_end))
