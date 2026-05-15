@@ -30,18 +30,21 @@ class Actor(nn.Module):
     def __init__(self, in_dim: int, out_dim: int):
         """Initialize."""
         super(Actor, self).__init__()
-        
-        ############TODO#############
-        # Remeber to initialize the layer weights
-        
-        #############################
+        self.fc1 = nn.Linear(in_dim, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.mu = nn.Linear(128, out_dim)
+        self.log_std = nn.Parameter(torch.zeros(out_dim))
+
+        initialize_uniformly(self.mu)
         
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-
-        ############TODO#############
-
-        #############################
+        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc2(x))
+        mean = 2.0 * torch.tanh(self.mu(x))
+        std = self.log_std.exp().expand_as(mean)
+        dist = Normal(mean, std)
+        action = dist.sample()
 
         return action, dist
 
@@ -50,18 +53,17 @@ class Critic(nn.Module):
     def __init__(self, in_dim: int):
         """Initialize."""
         super(Critic, self).__init__()
-        
-        ############TODO#############
-        # Remeber to initialize the layer weights
-        
-        #############################
+        self.fc1 = nn.Linear(in_dim, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.value = nn.Linear(128, 1)
+
+        initialize_uniformly(self.value)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-        
-        ############TODO#############
-
-        #############################
+        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc2(x))
+        value = self.value(x)
 
         return value
     
