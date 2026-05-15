@@ -19,7 +19,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Implement A2C networks | `7957769` | `python3 -m py_compile a2c_pendulum.py` passed; runtime smoke blocked | Completed Gaussian actor and value critic. Runtime test blocked because local Python has no `torch`. |
 | Done | Implement A2C update step | `ccf54b0` | `python3 -m py_compile a2c_pendulum.py` passed; runtime smoke blocked | Completed TD target, actor loss, critic loss, entropy. Runtime test blocked because local Python has no `torch`. |
 | Done | Add Task 1 train/eval CLI | `00981b6` | `python3 -m py_compile a2c_pendulum.py` passed; runtime smoke blocked | Added model save/load, `--mode train|eval`, seed range evaluation, and `--no-wandb`. |
-| Done | Document Task 1 execution progress | Pending current commit | Final progress review | Recorded final Task 1 commands and current environment limitations. |
+| Done | Document Task 1 execution progress | `a550e1f` | Final progress review | Recorded final Task 1 commands and current environment limitations. |
 
 ## Validation Log
 
@@ -35,6 +35,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-15 09:38:00 CST: Added Task 1 train/eval CLI, checkpoint save/load, seed range evaluation, and optional W&B logging. `python3 -m py_compile a2c_pendulum.py` passed. Train/eval runtime smoke tests are blocked because local Python has no `torch`.
 - 2026-05-15 09:38:00 CST: Commit `00981b6` pushed to `origin/main`.
 - 2026-05-15 09:39:00 CST: Documented Task 1 execution commands and current limitations.
+- 2026-05-15 09:39:00 CST: Commit `a550e1f` pushed to `origin/main`.
 
 ## Current Task 1 Commands
 
