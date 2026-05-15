@@ -21,6 +21,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Add Task 1 train/eval CLI | `00981b6` | `python3 -m py_compile a2c_pendulum.py` passed; runtime smoke blocked | Added model save/load, `--mode train|eval`, seed range evaluation, and `--no-wandb`. |
 | Done | Document Task 1 execution progress | `a550e1f` | Final progress review | Recorded final Task 1 commands and current environment limitations. |
 | Done | Add Task 1 training guide | `48604e2` | Markdown review and `python3 -m py_compile a2c_pendulum.py` passed | Added environment setup, training, evaluation, video, W&B, troubleshooting, and report command guidance. |
+| Done | Fix PyTorch 2.6 checkpoint loading | Pending current commit | `python3 -m py_compile a2c_pendulum.py` passed | Load trusted full checkpoints with metadata and save metadata as Python native values. |
 
 ## Validation Log
 
@@ -39,6 +40,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-15 09:39:00 CST: Commit `a550e1f` pushed to `origin/main`.
 - 2026-05-15 09:45:00 CST: Added `LAB7_TRAINING_GUIDE.md` with Task 1 training and evaluation instructions. `python3 -m py_compile a2c_pendulum.py` passed.
 - 2026-05-15 09:45:00 CST: Commit `48604e2` pushed to `origin/main`.
+- 2026-05-15 10:00:00 CST: Fixed PyTorch 2.6+ checkpoint loading error caused by `torch.load(..., weights_only=True)` default and checkpoint metadata.
 
 ## Current Task 1 Commands
 

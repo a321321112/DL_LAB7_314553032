@@ -136,16 +136,19 @@ class A2CAgent:
             {
                 "actor": self.actor.state_dict(),
                 "critic": self.critic.state_dict(),
-                "total_step": self.total_step,
-                "score": score,
-                "seed": self.seed,
+                "total_step": int(self.total_step),
+                "score": float(score),
+                "seed": int(self.seed),
             },
             self.model_path,
         )
 
     def load_model(self, model_path: str) -> None:
         """Load actor and critic weights from a saved snapshot."""
-        checkpoint = torch.load(model_path, map_location=self.device)
+        try:
+            checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
+        except TypeError:
+            checkpoint = torch.load(model_path, map_location=self.device)
         self.actor.load_state_dict(checkpoint["actor"])
         self.critic.load_state_dict(checkpoint["critic"])
         self.loaded_training_step = int(checkpoint.get("total_step", 0))

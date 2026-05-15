@@ -211,6 +211,25 @@ pip install -r requirements.txt
 
 若仍然很差，再調整 learning rate 或 entropy weight。
 
+### `_pickle.UnpicklingError: Weights only load failed`
+
+這通常發生在 PyTorch 2.6+。PyTorch 2.6 將 `torch.load()` 的 `weights_only` 預設改成 `True`，但本程式保存的 snapshot 不是單純 state dict，還包含 `total_step`、`score`、`seed` 等 metadata。
+
+請先更新到包含 checkpoint loading 修正的最新版程式，再重新執行 evaluation:
+
+```bash
+git pull
+python a2c_pendulum.py \
+  --mode eval \
+  --model-path LAB7_314553032_task1_a2c_pendulum.pt \
+  --seed-start 0 \
+  --seed-end 19 \
+  --eval-episodes 20 \
+  --no-wandb
+```
+
+只對自己訓練產生、可信任來源的 `.pt` 檔案使用這個載入流程。
+
 ## 9. Report 可使用的指令區塊
 
 Report 中可以放以下 reproducibility commands:
