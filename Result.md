@@ -9,6 +9,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 1 run 1 | A2C | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum.pt` | 199,600 | -225.655 | > -150 | Not passed |
 | Task 1 run 2 | A2C | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_v2.pt` | 384,600 | -162.898 | > -150 | Not passed |
 | Task 1 run 3 | A2C | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_v3.pt` | 368,800 | -161.347 | > -150 | Not passed |
+| Task 1 run 4 | A2C | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_v4.pt` | 550,400 | -168.578 | > -150 | Not passed |
 | Task 2 | PPO-Clip + GAE | `Pendulum-v1` | Pending | Pending | Pending | > -150 | Pending |
 | Task 3 | PPO-Clip + GAE | `Walker2d-v5` | Pending | Pending | Pending | >= 2500 | Pending |
 
@@ -21,6 +22,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Run 1 | `LAB7_314553032_task1_a2c_pendulum.pt` | 1000 inferred | 1e-4 inferred | 1e-3 inferred | 0.9 | 1e-2 inferred | Not recorded | Exact training command was not recorded; values match the script defaults used before tuning. |
 | Run 2 | `LAB7_314553032_task1_a2c_pendulum_v2.pt` | 2000 recommended | 5e-5 | 5e-4 | 0.9 | 1e-3 | `pendulum-a2c-lr5e5-ent1e3` inferred | Conservative LR and lower entropy run used after run 1 instability. |
 | Run 3 | `LAB7_314553032_task1_a2c_pendulum_v3.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 5e-4 | `pendulum-a2c-lr3e5-ent5e4` | User-provided command. |
+| Run 4 | `LAB7_314553032_task1_a2c_pendulum_v4.pt` | 3000 | 1e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-lr1e5-critic3e4-ent1e4` | User-provided command; lower actor LR and entropy did not improve final 20-seed mean. |
 
 ### Run 1 Evaluation Metadata
 
@@ -323,3 +325,131 @@ Expected effect of v4:
 - Keeping `critic-lr` at `3e-4` is reasonable because critic loss already stabilizes in run 3.
 
 However, because run 2 and run 3 are very close, periodic evaluation checkpointing is likely more valuable than another long run with only small hyperparameter changes.
+
+### Run 4 Training Command
+
+```bash
+python a2c_pendulum.py \
+  --mode train \
+  --num-episodes 3000 \
+  --actor-lr 1e-5 \
+  --critic-lr 3e-4 \
+  --entropy-weight 1e-4 \
+  --discount-factor 0.9 \
+  --model-path LAB7_314553032_task1_a2c_pendulum_v4.pt \
+  --wandb-run-name pendulum-a2c-lr1e5-critic3e4-ent1e4
+```
+
+### Run 4 Evaluation Metadata
+
+- Date: 2026-05-15 14:42:37 CST
+- Algorithm: A2C
+- Environment: `Pendulum-v1`
+- Model snapshot: `LAB7_314553032_task1_a2c_pendulum_v4.pt`
+- Training environment steps in checkpoint: `550400`
+- Evaluation seeds: `0` to `19`
+- Number of evaluation episodes: `20`
+- Mean reward: `-168.578`
+- Assignment target: average reward `> -150` over 20 evaluation episodes
+- Result: **Not passed**
+
+### Run 4 Evaluation Command
+
+```bash
+python a2c_pendulum.py \
+  --mode eval \
+  --model-path LAB7_314553032_task1_a2c_pendulum_v4.pt \
+  --seed-start 0 \
+  --seed-end 19 \
+  --eval-episodes 20 \
+  --no-wandb
+```
+
+### Run 4 Per-Seed Rewards
+
+| Seed | Reward | Above -150 |
+| ---: | ---: | --- |
+| 0 | -130.186 | Yes |
+| 1 | -0.380 | Yes |
+| 2 | -128.604 | Yes |
+| 3 | -249.277 | No |
+| 4 | -409.412 | No |
+| 5 | -123.769 | Yes |
+| 6 | -0.427 | Yes |
+| 7 | -127.448 | Yes |
+| 8 | -132.751 | Yes |
+| 9 | -269.283 | No |
+| 10 | -355.013 | No |
+| 11 | -265.714 | No |
+| 12 | -135.709 | Yes |
+| 13 | -247.731 | No |
+| 14 | -264.321 | No |
+| 15 | -126.219 | Yes |
+| 16 | -2.424 | Yes |
+| 17 | -269.073 | No |
+| 18 | -131.857 | Yes |
+| 19 | -1.960 | Yes |
+
+### Run 4 Standard Check
+
+- Required average reward: `> -150`
+- Current average reward: `-168.578`
+- Gap to target: `18.578` reward points below target
+- Seeds above `-150`: `12 / 20`
+- Seeds below or equal to `-150`: `8 / 20`
+- Full-score timing target for Task 1: reach average reward `> -150` within `200000` environment steps
+- Current checkpoint step: `550400`
+- Current conclusion: run 4 does **not** meet the Task 1 performance standard and is worse than run 3 despite longer training.
+
+### Run 4 Comparison
+
+| Metric | Run 1 | Run 2 | Run 3 | Run 4 |
+| --- | ---: | ---: | ---: | ---: |
+| Env steps | 199,600 | 384,600 | 368,800 | 550,400 |
+| Mean reward | -225.655 | -162.898 | -161.347 | -168.578 |
+| Gap to target | 75.655 | 12.898 | 11.347 | 18.578 |
+| Seeds above -150 | 10 / 20 | 12 / 20 | 12 / 20 | 12 / 20 |
+
+Run 4 is `7.231` reward points worse than run 3. Lowering `actor-lr` to `1e-5` and `entropy-weight` to `1e-4` did not improve robustness across the same difficult seeds.
+
+### Run 4 W&B Curve Notes
+
+- The return curve improves and then plateaus, but the late-stage return remains in a similar band to run 3.
+- `critic loss` becomes stable and near zero after the early phase, so critic fitting is not the main issue.
+- `actor loss` is stable late in training, indicating that simply reducing actor LR further does not solve the bad-seed failures.
+- The same difficult seed pattern remains: seeds `3`, `4`, `9`, `10`, `11`, `13`, `14`, and `17` fail the `-150` threshold.
+
+### Run 4 Conclusion and Next Action
+
+The results now strongly suggest that more hyperparameter-only training is unlikely to reliably pass Task 1. The training code should be changed so that checkpoint selection matches the grading metric.
+
+Recommended code change:
+
+- Add a separate deterministic evaluation environment.
+- During training, every `eval_interval` environment steps, evaluate seeds `0` to `19`.
+- Save `LAB7_314553032_task1_a2c_pendulum_evalbest.pt` only when the 20-seed mean reward improves.
+- Log `eval/mean_reward`, `eval/best_mean_reward`, and optionally each seed reward to W&B.
+- Keep the current training-episode `best_return` logging for diagnostics, but stop using it as the main model-selection criterion.
+
+Recommended implementation parameters:
+
+```txt
+eval_interval = 10000 or 20000 environment steps
+eval_seed_start = 0
+eval_seed_end = 19
+eval_model_path = LAB7_314553032_task1_a2c_pendulum_evalbest.pt
+```
+
+After this change, rerun the best current hyperparameter setting, preferably run 3 settings:
+
+```bash
+python a2c_pendulum.py \
+  --mode train \
+  --num-episodes 2500 \
+  --actor-lr 3e-5 \
+  --critic-lr 3e-4 \
+  --entropy-weight 5e-4 \
+  --discount-factor 0.9 \
+  --model-path LAB7_314553032_task1_a2c_pendulum_evalbest.pt \
+  --wandb-run-name pendulum-a2c-evalbest-lr3e5-ent5e4
+```
