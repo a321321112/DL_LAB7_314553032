@@ -22,7 +22,7 @@ except ModuleNotFoundError:
     wandb = None
 from pathlib import Path
 from tqdm import tqdm
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 def initialize_uniformly(layer: nn.Linear, init_w: float = 3e-3):
     """Initialize the weights and bias in [-init_w, init_w]."""
@@ -103,7 +103,14 @@ class A2CAgent:
         self.save_dir = Path(getattr(args, "save_dir", "."))
         model_path = Path(getattr(args, "model_path", "LAB7_314553032_task1_a2c_pendulum.pt"))
         self.model_path = model_path if model_path.is_absolute() else self.save_dir / model_path
+        eval_model_path = Path(getattr(args, "eval_model_path", "LAB7_314553032_task1_a2c_pendulum_evalbest.pt"))
+        self.eval_model_path = eval_model_path if eval_model_path.is_absolute() else self.save_dir / eval_model_path
+        self.eval_interval = int(getattr(args, "eval_interval", 20000))
+        self.eval_seed_start = int(getattr(args, "eval_seed_start", 0))
+        self.eval_seed_end = int(getattr(args, "eval_seed_end", 19))
+        self.train_eval_enabled = not bool(getattr(args, "disable_train_eval", False)) and self.eval_interval > 0
         self.best_score = -float("inf")
+        self.eval_best_score = -float("inf")
         self.loaded_training_step = 0
         
         # device: cpu / gpu
@@ -129,18 +136,55 @@ class A2CAgent:
         # mode: train / test
         self.is_test = False
 
+    def _env_id(self) -> str:
+        """Return the Gymnasium id used to build a separate eval environment."""
+        spec = getattr(getattr(self.env, "unwrapped", self.env), "spec", None)
+        return getattr(spec, "id", "Pendulum-v1")
+
+    def _deterministic_action(self, state: np.ndarray) -> np.ndarray:
+        """Select the Gaussian mean action without touching training transition state."""
+        state_tensor = torch.FloatTensor(state).to(self.device)
+        with torch.no_grad():
+            _, dist = self.actor(state_tensor)
+            action = dist.mean
+        return action.clamp(-2.0, 2.0).cpu().numpy()
+
+    def save_checkpoint(
+        self,
+        path: Path,
+        score: float,
+        selection_metric: str,
+        eval_seed_start: Optional[int] = None,
+        eval_seed_end: Optional[int] = None,
+    ) -> None:
+        """Save actor/critic weights and selection metadata."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        checkpoint = {
+            "actor": self.actor.state_dict(),
+            "critic": self.critic.state_dict(),
+            "total_step": int(self.total_step),
+            "score": float(score),
+            "seed": int(self.seed),
+            "selection_metric": selection_metric,
+        }
+        if eval_seed_start is not None and eval_seed_end is not None:
+            checkpoint["eval_mean_reward"] = float(score)
+            checkpoint["eval_seed_start"] = int(eval_seed_start)
+            checkpoint["eval_seed_end"] = int(eval_seed_end)
+        torch.save(checkpoint, path)
+
     def save_model(self, score: float) -> None:
         """Save the current actor and critic snapshot."""
-        self.model_path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(
-            {
-                "actor": self.actor.state_dict(),
-                "critic": self.critic.state_dict(),
-                "total_step": int(self.total_step),
-                "score": float(score),
-                "seed": int(self.seed),
-            },
-            self.model_path,
+        self.save_checkpoint(self.model_path, score, "episode_return")
+
+    def save_eval_model(self, mean_reward: float) -> None:
+        """Save the current snapshot selected by periodic evaluation mean."""
+        self.save_checkpoint(
+            self.eval_model_path,
+            mean_reward,
+            "eval_mean_reward",
+            eval_seed_start=self.eval_seed_start,
+            eval_seed_end=self.eval_seed_end,
         )
 
     def load_model(self, model_path: str) -> None:
@@ -153,6 +197,36 @@ class A2CAgent:
         self.critic.load_state_dict(checkpoint["critic"])
         self.loaded_training_step = int(checkpoint.get("total_step", 0))
         self.best_score = float(checkpoint.get("score", -float("inf")))
+
+    def evaluate_policy(
+        self,
+        env: gym.Env,
+        seed_start: int,
+        seed_end: int,
+        verbose: bool = True,
+    ) -> Tuple[float, List[float]]:
+        """Evaluate deterministic mean actions on a provided environment."""
+        was_training = self.actor.training
+        self.actor.eval()
+        rewards: List[float] = []
+
+        for seed in range(seed_start, seed_end + 1):
+            state, _ = env.reset(seed=seed)
+            done = False
+            score = 0.0
+            while not done:
+                action = self._deterministic_action(state)
+                state, reward, terminated, truncated, _ = env.step(action)
+                done = terminated or truncated
+                score += float(reward)
+            rewards.append(score)
+            if verbose:
+                print(f"seed={seed} reward={score:.3f}")
+
+        if was_training:
+            self.actor.train()
+        mean_reward = float(np.mean(rewards)) if rewards else 0.0
+        return mean_reward, rewards
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input state."""
@@ -213,6 +287,8 @@ class A2CAgent:
     def train(self):
         """Train the agent."""
         self.is_test = False
+        eval_env = gym.make(self._env_id()) if self.train_eval_enabled else None
+        next_eval_step = self.eval_interval
         
         state, _ = self.env.reset(seed=self.seed)
         for ep in tqdm(range(1, self.num_episodes + 1)):
@@ -233,6 +309,30 @@ class A2CAgent:
                 state = next_state
                 score += reward
                 self.total_step += 1
+
+                while eval_env is not None and self.total_step >= next_eval_step:
+                    mean_reward, _ = self.evaluate_policy(
+                        eval_env,
+                        self.eval_seed_start,
+                        self.eval_seed_end,
+                        verbose=False,
+                    )
+                    if mean_reward > self.eval_best_score:
+                        self.eval_best_score = mean_reward
+                        self.save_eval_model(mean_reward)
+                    print(
+                        f"Eval at step {self.total_step}: "
+                        f"mean reward = {mean_reward:.3f} | "
+                        f"best eval mean = {self.eval_best_score:.3f}"
+                    )
+                    if self.use_wandb:
+                        wandb.log({
+                            "step": self.total_step,
+                            "eval/mean_reward": mean_reward,
+                            "eval/best_mean_reward": self.eval_best_score,
+                        })
+                    next_eval_step += self.eval_interval
+
                 # W&B logging
                 if self.use_wandb:
                     wandb.log({
@@ -254,6 +354,8 @@ class A2CAgent:
                             "return": score,
                             "best_return": self.best_score,
                         })
+        if eval_env is not None:
+            eval_env.close()
 
     def test(self, video_folder: str):
         """Test the agent."""
@@ -281,20 +383,7 @@ class A2CAgent:
     def evaluate(self, seed_start: int, seed_end: int) -> Tuple[float, List[float]]:
         """Evaluate the deterministic policy over an inclusive seed range."""
         self.is_test = True
-        rewards: List[float] = []
-
-        for seed in range(seed_start, seed_end + 1):
-            state, _ = self.env.reset(seed=seed)
-            done = False
-            score = 0.0
-            while not done:
-                with torch.no_grad():
-                    action = self.select_action(state)
-                next_state, reward, done = self.step(action)
-                state = next_state
-                score += float(reward)
-            rewards.append(score)
-            print(f"seed={seed} reward={score:.3f}")
+        mean_reward, rewards = self.evaluate_policy(self.env, seed_start, seed_end, verbose=True)
 
         mean_reward = float(np.mean(rewards)) if rewards else 0.0
         print(f"model_path={self.model_path}")
@@ -321,6 +410,11 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=77)
     parser.add_argument("--entropy-weight", type=float, default=1e-2) # entropy can be disabled by setting this to 0
     parser.add_argument("--model-path", type=str, default="LAB7_314553032_task1_a2c_pendulum.pt")
+    parser.add_argument("--eval-model-path", type=str, default="LAB7_314553032_task1_a2c_pendulum_evalbest.pt")
+    parser.add_argument("--eval-interval", type=int, default=20000)
+    parser.add_argument("--eval-seed-start", type=int, default=0)
+    parser.add_argument("--eval-seed-end", type=int, default=19)
+    parser.add_argument("--disable-train-eval", action="store_true")
     parser.add_argument("--save-dir", type=str, default=".")
     parser.add_argument("--eval-episodes", type=int, default=20)
     parser.add_argument("--seed-start", type=int, default=0)
