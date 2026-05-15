@@ -23,7 +23,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Add Task 1 training guide | `48604e2` | Markdown review and `python3 -m py_compile a2c_pendulum.py` passed | Added environment setup, training, evaluation, video, W&B, troubleshooting, and report command guidance. |
 | Done | Fix PyTorch 2.6 checkpoint loading | `396ea5b` | `python3 -m py_compile a2c_pendulum.py` passed | Load trusted full checkpoints with metadata and save metadata as Python native values. |
 | Done | Add periodic eval-best checkpointing | `6094235` | `python3 -m py_compile a2c_pendulum.py` passed | Added training-time 20-seed evaluation, eval-best checkpoint path, and W&B eval mean logging. |
-| Done | Document periodic eval-best checkpointing | Pending current commit | Documentation review | Updated training guide and progress notes for eval-best workflow. |
+| Done | Document periodic eval-best checkpointing | `faac8f9` | Documentation review | Updated training guide and progress notes for eval-best workflow. |
 
 ## Validation Log
 
@@ -46,6 +46,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-15 10:00:00 CST: Commit `396ea5b` pushed to `origin/main`.
 - 2026-05-15: Added periodic training-time evaluation every `--eval-interval` steps. The eval-best checkpoint is selected by deterministic seeds `--eval-seed-start` to `--eval-seed-end` mean reward and saved separately from the single-episode training best checkpoint.
 - 2026-05-15: Commit `6094235` pushed to `origin/main`.
+- 2026-05-15: Commit `faac8f9` pushed to `origin/main`.
 
 ## Current Task 1 Commands
 
