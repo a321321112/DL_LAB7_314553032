@@ -557,10 +557,10 @@ The eval-best checkpointing change helped select the best available snapshot, bu
 
 Recommended next code-level changes, in priority order:
 
-1. Add n-step returns for A2C, for example `n_step = 5`, so the actor update is less myopic than one-step TD.
-2. Normalize advantages before actor update when using batched or n-step updates.
-3. Add optional reward scaling, for example divide Pendulum rewards by `10`, to reduce critic target magnitude.
-4. Add explicit action standard deviation control, such as `--init-log-std` and optional lower clamp, because some seeds appear to need more reliable torque selection rather than more random exploration.
+1. Implemented: n-step returns for A2C, controlled by `--n-step`.
+2. Implemented: advantage normalization before actor update, enabled by default.
+3. Implemented: optional reward scaling, controlled by `--reward-scale`.
+4. Next possible change: add explicit action standard deviation control, such as `--init-log-std` and optional lower clamp, because some seeds appear to need more reliable torque selection rather than more random exploration.
 
 Recommended next experiment after code changes:
 
@@ -572,6 +572,8 @@ python a2c_pendulum.py \
   --critic-lr 3e-4 \
   --entropy-weight 5e-4 \
   --discount-factor 0.9 \
+  --n-step 5 \
+  --reward-scale 10.0 \
   --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_nstep.pt \
   --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt \
   --eval-interval 20000 \

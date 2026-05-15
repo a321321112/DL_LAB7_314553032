@@ -24,6 +24,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Fix PyTorch 2.6 checkpoint loading | `396ea5b` | `python3 -m py_compile a2c_pendulum.py` passed | Load trusted full checkpoints with metadata and save metadata as Python native values. |
 | Done | Add periodic eval-best checkpointing | `6094235` | `python3 -m py_compile a2c_pendulum.py` passed | Added training-time 20-seed evaluation, eval-best checkpoint path, and W&B eval mean logging. |
 | Done | Document periodic eval-best checkpointing | `faac8f9` | Documentation review | Updated training guide and progress notes for eval-best workflow. |
+| Done | Add n-step A2C update controls | `404bb71` | `python3 -m py_compile a2c_pendulum.py` passed | Added n-step rollout updates, reward scaling, and advantage normalization. |
 
 ## Validation Log
 
@@ -47,6 +48,8 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-15: Added periodic training-time evaluation every `--eval-interval` steps. The eval-best checkpoint is selected by deterministic seeds `--eval-seed-start` to `--eval-seed-end` mean reward and saved separately from the single-episode training best checkpoint.
 - 2026-05-15: Commit `6094235` pushed to `origin/main`.
 - 2026-05-15: Commit `faac8f9` pushed to `origin/main`.
+- 2026-05-15 15:53:29 CST: Added n-step A2C update logic with `--n-step`, `--reward-scale`, and default advantage normalization. `python3 -m py_compile a2c_pendulum.py` passed.
+- 2026-05-15 15:53:29 CST: Commit `404bb71` pushed to `origin/main`.
 
 ## Current Task 1 Commands
 
@@ -59,13 +62,13 @@ python a2c_pendulum.py --mode train --num-episodes 1000 --no-wandb
 Train with W&B:
 
 ```bash
-python a2c_pendulum.py --mode train --num-episodes 2500 --actor-lr 3e-5 --critic-lr 3e-4 --entropy-weight 5e-4 --eval-interval 20000 --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest.pt --wandb-run-name pendulum-a2c-evalbest-lr3e5-ent5e4
+python a2c_pendulum.py --mode train --num-episodes 2500 --actor-lr 3e-5 --critic-lr 3e-4 --entropy-weight 5e-4 --discount-factor 0.9 --n-step 5 --reward-scale 10.0 --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_nstep.pt --eval-interval 20000 --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt --wandb-run-name pendulum-a2c-nstep-evalbest
 ```
 
 Evaluate the saved snapshot on seeds 0 to 19:
 
 ```bash
-python a2c_pendulum.py --mode eval --model-path LAB7_314553032_task1_a2c_pendulum_evalbest.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python a2c_pendulum.py --mode eval --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
 ```
 
 Record one evaluation video, then run seed evaluation:
