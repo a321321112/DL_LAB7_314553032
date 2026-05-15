@@ -130,6 +130,9 @@ class A2CAgent:
         self.eval_seed_start = int(getattr(args, "eval_seed_start", 0))
         self.eval_seed_end = int(getattr(args, "eval_seed_end", 19))
         self.train_eval_enabled = not bool(getattr(args, "disable_train_eval", False)) and self.eval_interval > 0
+        self.target_eval_mean = getattr(args, "target_eval_mean", None)
+        if self.target_eval_mean is not None:
+            self.target_eval_mean = float(self.target_eval_mean)
         self.best_score = -float("inf")
         self.eval_best_score = -float("inf")
         self.loaded_training_step = 0
@@ -347,6 +350,7 @@ class A2CAgent:
         self.is_test = False
         eval_env = gym.make(self._env_id()) if self.train_eval_enabled else None
         next_eval_step = self.eval_interval
+        stop_training = False
         
         state, _ = self.env.reset(seed=self.seed)
         for ep in tqdm(range(1, self.num_episodes + 1)):
@@ -393,7 +397,19 @@ class A2CAgent:
                             "eval/mean_reward": mean_reward,
                             "eval/best_mean_reward": self.eval_best_score,
                         })
+                    if self.target_eval_mean is not None and self.eval_best_score > self.target_eval_mean:
+                        print(
+                            f"Target eval mean reached: "
+                            f"{self.eval_best_score:.3f} > {self.target_eval_mean:.3f}. "
+                            "Stopping training."
+                        )
+                        stop_training = True
                     next_eval_step += self.eval_interval
+                    if stop_training:
+                        break
+
+                if stop_training:
+                    break
 
                 # W&B logging
                 if self.use_wandb and actor_loss is not None and critic_loss is not None:
@@ -423,6 +439,8 @@ class A2CAgent:
                             "return": score,
                             "best_return": self.best_score,
                         })
+            if stop_training:
+                break
         if eval_env is not None:
             eval_env.close()
 
@@ -489,6 +507,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval-interval", type=int, default=20000)
     parser.add_argument("--eval-seed-start", type=int, default=0)
     parser.add_argument("--eval-seed-end", type=int, default=19)
+    parser.add_argument("--target-eval-mean", type=float, default=None)
     parser.add_argument("--disable-train-eval", action="store_true")
     parser.add_argument("--save-dir", type=str, default=".")
     parser.add_argument("--eval-episodes", type=int, default=20)
