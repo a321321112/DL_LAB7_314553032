@@ -26,6 +26,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Document periodic eval-best checkpointing | `faac8f9` | Documentation review | Updated training guide and progress notes for eval-best workflow. |
 | Done | Add n-step A2C update controls | `404bb71` | `python3 -m py_compile a2c_pendulum.py` passed | Added n-step rollout updates, reward scaling, and advantage normalization. |
 | Done | Add action log std controls | `18bce46` | `python3 -m py_compile a2c_pendulum.py` passed | Added configurable Gaussian action std initialization and clamp bounds. |
+| Done | Add eval target early stopping | `5ed7aa8` | `python3 -m py_compile a2c_pendulum.py` passed | Added `--target-eval-mean` to stop training once eval-best mean passes the target. |
 
 ## Validation Log
 
@@ -53,6 +54,8 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-15 15:53:29 CST: Commit `404bb71` pushed to `origin/main`.
 - 2026-05-15 17:43:02 CST: Added action distribution controls with `--init-log-std`, `--min-log-std`, and `--max-log-std`. `python3 -m py_compile a2c_pendulum.py` passed.
 - 2026-05-15 17:43:02 CST: Commit `18bce46` pushed to `origin/main`.
+- 2026-05-15 18:43:22 CST: Added `--target-eval-mean` so long training can stop automatically after fixed-seed eval-best mean passes the target. `python3 -m py_compile a2c_pendulum.py` passed.
+- 2026-05-15 18:43:22 CST: Commit `5ed7aa8` pushed to `origin/main`.
 
 ## Current Task 1 Commands
 
@@ -65,13 +68,13 @@ python a2c_pendulum.py --mode train --num-episodes 1000 --no-wandb
 Train with W&B:
 
 ```bash
-python a2c_pendulum.py --mode train --num-episodes 2500 --actor-lr 3e-5 --critic-lr 3e-4 --entropy-weight 1e-4 --discount-factor 0.9 --n-step 5 --reward-scale 10.0 --init-log-std -0.5 --min-log-std -2.0 --max-log-std 0.5 --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_logstd.pt --eval-interval 20000 --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt --wandb-run-name pendulum-a2c-logstd-evalbest
+python a2c_pendulum.py --mode train --num-episodes 10000 --actor-lr 3e-5 --critic-lr 3e-4 --entropy-weight 1e-4 --discount-factor 0.9 --n-step 5 --reward-scale 10.0 --init-log-std -0.5 --min-log-std -2.0 --max-log-std 0.5 --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_untilpass.pt --eval-interval 20000 --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt --target-eval-mean -150 --wandb-run-name pendulum-a2c-untilpass
 ```
 
 Evaluate the saved snapshot on seeds 0 to 19:
 
 ```bash
-python a2c_pendulum.py --mode eval --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python a2c_pendulum.py --mode eval --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
 ```
 
 Record one evaluation video, then run seed evaluation:

@@ -13,6 +13,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 1 run 5 | A2C + eval-best checkpoint | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest.pt` | 500,000 | -160.474 | > -150 | Not passed |
 | Task 1 run 6 | A2C + n-step + eval-best checkpoint | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt` | 480,000 | -161.588 | > -150 | Not passed |
 | Task 1 run 7 | A2C + n-step + log-std control + eval-best checkpoint | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt` | 500,000 | -164.090 | > -150 | Not passed |
+| Task 1 run 8 | A2C + n-step + log-std control + longer training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt` | 520,000 | -154.011 | > -150 | Not passed |
 | Task 2 | PPO-Clip + GAE | `Pendulum-v1` | Pending | Pending | Pending | > -150 | Pending |
 | Task 3 | PPO-Clip + GAE | `Walker2d-v5` | Pending | Pending | Pending | >= 2500 | Pending |
 
@@ -29,6 +30,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Run 5 | `LAB7_314553032_task1_a2c_pendulum_evalbest.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 5e-4 | `pendulum-a2c-evalbest-lr3e5-ent5e4` | Uses periodic 20-seed eval-best checkpointing every 20000 steps. |
 | Run 6 | `LAB7_314553032_task1_a2c_pendulum_evalbest_nstep.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 5e-4 | `pendulum-a2c-nstep-evalbest` | Adds `--n-step 5`, `--reward-scale 10.0`, and default advantage normalization. |
 | Run 7 | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-logstd-evalbest` | Adds `--init-log-std -0.5`, `--min-log-std -2.0`, and `--max-log-std 0.5`. |
+| Run 8 | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt` | 4000 | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-logstd-long` | Same as run 7, only longer training. |
 
 ### Run 1 Evaluation Metadata
 
@@ -833,4 +835,124 @@ python a2c_pendulum.py \
   --eval-seed-start 0 \
   --eval-seed-end 19 \
   --wandb-run-name pendulum-a2c-logstd-long
+```
+
+### Run 8 Training Command
+
+```bash
+python a2c_pendulum.py \
+  --mode train \
+  --num-episodes 4000 \
+  --actor-lr 3e-5 \
+  --critic-lr 3e-4 \
+  --entropy-weight 1e-4 \
+  --discount-factor 0.9 \
+  --n-step 5 \
+  --reward-scale 10.0 \
+  --init-log-std -0.5 \
+  --min-log-std -2.0 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_logstd_long.pt \
+  --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --wandb-run-name pendulum-a2c-logstd-long
+```
+
+### Run 8 Evaluation Metadata
+
+- Date: 2026-05-15 18:43:22 CST
+- Algorithm: A2C with n-step rollout updates, reward scaling, advantage normalization, action log-std control, and periodic eval-best checkpointing
+- Environment: `Pendulum-v1`
+- Model snapshot: `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt`
+- Training environment steps in checkpoint: `520000`
+- Evaluation seeds: `0` to `19`
+- Number of evaluation episodes: `20`
+- Mean reward: `-154.011`
+- Assignment target: average reward `> -150` over 20 evaluation episodes
+- Result: **Not passed**
+
+### Run 8 Evaluation Command
+
+```bash
+python a2c_pendulum.py \
+  --mode eval \
+  --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt \
+  --seed-start 0 \
+  --seed-end 19 \
+  --eval-episodes 20 \
+  --no-wandb
+```
+
+### Run 8 Per-Seed Rewards
+
+| Seed | Reward | Above -150 |
+| ---: | ---: | --- |
+| 0 | -130.943 | Yes |
+| 1 | -0.503 | Yes |
+| 2 | -126.962 | Yes |
+| 3 | -253.557 | No |
+| 4 | -264.764 | No |
+| 5 | -123.080 | Yes |
+| 6 | -0.549 | Yes |
+| 7 | -128.385 | Yes |
+| 8 | -131.424 | Yes |
+| 9 | -265.025 | No |
+| 10 | -345.161 | No |
+| 11 | -267.399 | No |
+| 12 | -134.347 | Yes |
+| 13 | -245.306 | No |
+| 14 | -134.134 | Yes |
+| 15 | -126.156 | Yes |
+| 16 | -2.612 | Yes |
+| 17 | -266.924 | No |
+| 18 | -130.922 | Yes |
+| 19 | -2.075 | Yes |
+
+### Run 8 Standard Check
+
+- Required average reward: `> -150`
+- Current average reward: `-154.011`
+- Gap to target: `4.011` reward points below target
+- Seeds above `-150`: `13 / 20`
+- Seeds below or equal to `-150`: `7 / 20`
+- Current checkpoint step: `520000`
+- Current conclusion: run 8 is the best result so far and is close to passing, but it still **does not** meet the Task 1 performance standard.
+
+### Run 8 Comparison
+
+| Metric | Run 5 | Run 6 | Run 7 | Run 8 |
+| --- | ---: | ---: | ---: | ---: |
+| Env steps in selected checkpoint | 500,000 | 480,000 | 500,000 | 520,000 |
+| Mean reward | -160.474 | -161.588 | -164.090 | -154.011 |
+| Gap to target | 10.474 | 11.588 | 14.090 | 4.011 |
+| Seeds above -150 | 12 / 20 | 12 / 20 | 13 / 20 | 13 / 20 |
+
+Longer training improved run 7 by `10.079` reward points and is now only `4.011` points below the target. The remaining failures are concentrated in seeds `3`, `4`, `9`, `10`, `11`, `13`, and `17`.
+
+### Run 8 Next Action
+
+The code now supports automatic early stopping by fixed-seed eval-best mean. Use a large episode cap and stop when `eval/best_mean_reward > -150`.
+
+```bash
+python a2c_pendulum.py \
+  --mode train \
+  --num-episodes 10000 \
+  --actor-lr 3e-5 \
+  --critic-lr 3e-4 \
+  --entropy-weight 1e-4 \
+  --discount-factor 0.9 \
+  --n-step 5 \
+  --reward-scale 10.0 \
+  --init-log-std -0.5 \
+  --min-log-std -2.0 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_untilpass.pt \
+  --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --target-eval-mean -150 \
+  --wandb-run-name pendulum-a2c-untilpass
 ```
