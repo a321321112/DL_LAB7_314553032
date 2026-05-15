@@ -20,7 +20,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Implement A2C update step | `ccf54b0` | `python3 -m py_compile a2c_pendulum.py` passed; runtime smoke blocked | Completed TD target, actor loss, critic loss, entropy. Runtime test blocked because local Python has no `torch`. |
 | Done | Add Task 1 train/eval CLI | `00981b6` | `python3 -m py_compile a2c_pendulum.py` passed; runtime smoke blocked | Added model save/load, `--mode train|eval`, seed range evaluation, and `--no-wandb`. |
 | Done | Document Task 1 execution progress | `a550e1f` | Final progress review | Recorded final Task 1 commands and current environment limitations. |
-| Done | Add Task 1 training guide | Pending current commit | Markdown review and `python3 -m py_compile a2c_pendulum.py` passed | Added environment setup, training, evaluation, video, W&B, troubleshooting, and report command guidance. |
+| Done | Add Task 1 training guide | `48604e2` | Markdown review and `python3 -m py_compile a2c_pendulum.py` passed | Added environment setup, training, evaluation, video, W&B, troubleshooting, and report command guidance. |
 
 ## Validation Log
 
@@ -38,6 +38,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-15 09:39:00 CST: Documented Task 1 execution commands and current limitations.
 - 2026-05-15 09:39:00 CST: Commit `a550e1f` pushed to `origin/main`.
 - 2026-05-15 09:45:00 CST: Added `LAB7_TRAINING_GUIDE.md` with Task 1 training and evaluation instructions. `python3 -m py_compile a2c_pendulum.py` passed.
+- 2026-05-15 09:45:00 CST: Commit `48604e2` pushed to `origin/main`.
 
 ## Current Task 1 Commands
 
