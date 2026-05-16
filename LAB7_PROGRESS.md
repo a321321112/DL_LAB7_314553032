@@ -33,6 +33,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Prepare Task 3 PPO Walker file | Current commit | `python3 -m py_compile ppo_walker.py` passed | Created `ppo_walker.py` from the proven PPO workflow and switched defaults to `Walker2d-v5`. |
 | Done | Adapt PPO Walker action and checkpoint logic | Current commit | `python3 -m py_compile ppo_walker.py` passed | Added Walker action bounds, value coefficient, 256-wide networks, fixed-step snapshots, and richer checkpoint metadata. |
 | Done | Fix Walker MuJoCo imageio dependency | Current commit | `python3 -m py_compile ppo_walker.py` passed | Added `imageio` packages to requirements and only requests `rgb_array` rendering when video output is enabled. |
+| Done | Record Task 3 baseline result | Current commit | Result review | Recorded 1M, 1.5M, 2M, 2.5M, 3M, and best checkpoint 20-seed evaluations. |
 
 ## Validation Log
 
@@ -70,6 +71,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-16 12:25:00 CST: Created `ppo_walker.py` from the proven PPO Pendulum workflow, changed default environment and artifact paths for Task 3, and verified syntax with `python3 -m py_compile ppo_walker.py`.
 - 2026-05-16 12:32:00 CST: Adapted PPO Walker implementation for multidimensional action bounds, added `--value-coef`, `--hidden-dim`, `--snapshot-steps`, fixed-step snapshot files, and metadata for environment/action dimensions. `python3 -m py_compile ppo_walker.py` passed. Local runtime `--help` is blocked because this Mac Python does not have `gymnasium`; run runtime smoke tests in the lab `.venv`.
 - 2026-05-16 12:45:00 CST: Fixed Task 3 startup dependency issue from Gymnasium MuJoCo importing `imageio`. Added `imageio` and `imageio-ffmpeg` to `requirements.txt`, and changed `ppo_walker.py` to request `render_mode="rgb_array"` only when `--render-video` is used.
+- 2026-05-16 13:10:00 CST: Recorded Task 3 run 1 evaluations. Best fixed snapshot is 3M with mean reward `2083.043`; train-time best checkpoint has 20-seed mean reward `1908.055`. Current run does not pass the `>=2500` target.
 
 ## Current Task 1 Commands
 
