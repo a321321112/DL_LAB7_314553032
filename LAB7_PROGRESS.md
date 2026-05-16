@@ -31,6 +31,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Implement Task 2 PPO Pendulum | `02c7288` | `python3 -m py_compile ppo_pendulum.py` passed | Implemented PPO networks, GAE, clipped objective, train/eval CLI, and eval-best checkpointing. |
 | Done | Add Task 3 implementation plan | Current commit | Markdown review | Renamed `Plan.md` to `Task2_Plan.md` and added `Task3_Plan.md` for Walker2d PPO work. |
 | Done | Prepare Task 3 PPO Walker file | Current commit | `python3 -m py_compile ppo_walker.py` passed | Created `ppo_walker.py` from the proven PPO workflow and switched defaults to `Walker2d-v5`. |
+| Done | Adapt PPO Walker action and checkpoint logic | Current commit | `python3 -m py_compile ppo_walker.py` passed | Added Walker action bounds, value coefficient, 256-wide networks, fixed-step snapshots, and richer checkpoint metadata. |
 
 ## Validation Log
 
@@ -66,6 +67,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-16 10:33:18 CST: Commit `02c7288` pushed to `origin/main`.
 - 2026-05-16 11:58:00 CST: Renamed Task 2 plan from `Plan.md` to `Task2_Plan.md` and added `Task3_Plan.md` with Walker2d PPO implementation, training, checkpoint, tuning, and report plan.
 - 2026-05-16 12:25:00 CST: Created `ppo_walker.py` from the proven PPO Pendulum workflow, changed default environment and artifact paths for Task 3, and verified syntax with `python3 -m py_compile ppo_walker.py`.
+- 2026-05-16 12:32:00 CST: Adapted PPO Walker implementation for multidimensional action bounds, added `--value-coef`, `--hidden-dim`, `--snapshot-steps`, fixed-step snapshot files, and metadata for environment/action dimensions. `python3 -m py_compile ppo_walker.py` passed. Local runtime `--help` is blocked because this Mac Python does not have `gymnasium`; run runtime smoke tests in the lab `.venv`.
 
 ## Current Task 1 Commands
 

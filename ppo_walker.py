@@ -7,7 +7,7 @@
 import argparse
 import random
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -31,6 +31,32 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     return layer
 
 
+def parse_snapshot_steps(raw_steps: str) -> List[int]:
+    """Parse comma-separated environment-step checkpoints."""
+    if not raw_steps:
+        return []
+    steps = []
+    for raw_step in raw_steps.split(","):
+        raw_step = raw_step.strip()
+        if not raw_step:
+            continue
+        step = int(raw_step)
+        if step <= 0:
+            raise ValueError("--snapshot-steps must contain positive integers")
+        steps.append(step)
+    return sorted(set(steps))
+
+
+def snapshot_step_label(step: int) -> str:
+    if step % 1_000_000 == 0:
+        return f"{step // 1_000_000}m"
+    if step % 100_000 == 0:
+        whole = step // 1_000_000
+        decimal = (step % 1_000_000) // 100_000
+        return f"{whole}p{decimal}m"
+    return str(step)
+
+
 class Actor(nn.Module):
     """Gaussian policy for Walker2d continuous actions."""
 
@@ -38,14 +64,15 @@ class Actor(nn.Module):
         self,
         in_dim: int,
         out_dim: int,
+        hidden_dim: int = 256,
         init_log_std: float = -0.5,
         min_log_std: float = -2.0,
         max_log_std: float = 0.5,
     ):
         super().__init__()
-        self.fc1 = nn.Linear(in_dim, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.mu = init_layer_uniform(nn.Linear(128, out_dim))
+        self.fc1 = nn.Linear(in_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.mu = init_layer_uniform(nn.Linear(hidden_dim, out_dim))
         self.log_std = nn.Parameter(torch.full((out_dim,), float(init_log_std)))
         self.min_log_std = float(min_log_std)
         self.max_log_std = float(max_log_std)
@@ -57,7 +84,7 @@ class Actor(nn.Module):
     def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, Normal]:
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
-        mean = 2.0 * torch.tanh(self.mu(x))
+        mean = torch.tanh(self.mu(x))
         log_std = self.log_std.clamp(self.min_log_std, self.max_log_std)
         std = log_std.exp().expand_as(mean)
         dist = Normal(mean, std)
@@ -68,11 +95,11 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """State-value network."""
 
-    def __init__(self, in_dim: int):
+    def __init__(self, in_dim: int, hidden_dim: int = 256):
         super().__init__()
-        self.fc1 = nn.Linear(in_dim, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.value = init_layer_uniform(nn.Linear(128, 1))
+        self.fc1 = nn.Linear(in_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.value = init_layer_uniform(nn.Linear(hidden_dim, 1))
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         x = F.relu(self.fc1(state))
@@ -144,9 +171,11 @@ class PPOAgent:
         self.num_episodes = args.num_episodes
         self.rollout_len = args.rollout_len
         self.entropy_weight = args.entropy_weight
+        self.value_coef = args.value_coef
         self.seed = args.seed
         self.update_epoch = args.update_epoch
         self.max_grad_norm = args.max_grad_norm
+        self.hidden_dim = args.hidden_dim
         self.init_log_std = args.init_log_std
         self.min_log_std = args.min_log_std
         self.max_log_std = args.max_log_std
@@ -162,6 +191,12 @@ class PPOAgent:
         self.eval_seed_start = int(args.eval_seed_start)
         self.eval_seed_end = int(args.eval_seed_end)
         self.train_eval_enabled = not args.disable_train_eval and self.eval_interval > 0
+        self.snapshot_steps = list(args.snapshot_steps)
+        self.saved_snapshot_steps: Set[int] = set()
+        self.snapshot_paths: Dict[int, Path] = {
+            step: self.save_dir / f"LAB7_314553032_task3_ppo_{snapshot_step_label(step)}.pt"
+            for step in self.snapshot_steps
+        }
 
         if self.min_log_std > self.max_log_std:
             raise ValueError("--min-log-std must be less than or equal to --max-log-std")
@@ -173,14 +208,17 @@ class PPOAgent:
 
         self.obs_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
+        self.action_low = torch.as_tensor(env.action_space.low, dtype=torch.float32, device=self.device)
+        self.action_high = torch.as_tensor(env.action_space.high, dtype=torch.float32, device=self.device)
         self.actor = Actor(
             self.obs_dim,
             self.action_dim,
+            hidden_dim=self.hidden_dim,
             init_log_std=self.init_log_std,
             min_log_std=self.min_log_std,
             max_log_std=self.max_log_std,
         ).to(self.device)
-        self.critic = Critic(self.obs_dim).to(self.device)
+        self.critic = Critic(self.obs_dim, hidden_dim=self.hidden_dim).to(self.device)
 
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=args.actor_lr)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=args.critic_lr)
@@ -205,18 +243,21 @@ class PPOAgent:
     def _state_tensor(self, state: np.ndarray) -> torch.Tensor:
         return torch.as_tensor(state, dtype=torch.float32, device=self.device).view(-1)
 
+    def _clamp_action(self, action: torch.Tensor) -> torch.Tensor:
+        return torch.max(torch.min(action, self.action_high), self.action_low)
+
     def _deterministic_action(self, state: np.ndarray) -> np.ndarray:
         state_tensor = self._state_tensor(state)
         with torch.no_grad():
             _, dist = self.actor(state_tensor)
-            action = dist.mean
-        return action.clamp(-2.0, 2.0).cpu().numpy()
+            action = self._clamp_action(dist.mean)
+        return action.cpu().numpy()
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         state_tensor = self._state_tensor(state)
         action, dist = self.actor(state_tensor)
         selected_action = dist.mean if self.is_test else action
-        selected_action = selected_action.clamp(-2.0, 2.0)
+        selected_action = self._clamp_action(selected_action)
 
         if not self.is_test:
             value = self.critic(state_tensor).view(1)
@@ -278,7 +319,7 @@ class PPOAgent:
             actor_loss = -torch.min(surr1, surr2).mean() - self.entropy_weight * entropy
 
             value = self.critic(state).squeeze(-1)
-            critic_loss = F.mse_loss(value, return_)
+            critic_loss = self.value_coef * F.mse_loss(value, return_)
 
             self.critic_optimizer.zero_grad()
             critic_loss.backward()
@@ -333,12 +374,19 @@ class PPOAgent:
             "tau": float(self.tau),
             "epsilon": float(self.epsilon),
             "entropy_weight": float(self.entropy_weight),
+            "value_coef": float(self.value_coef),
             "rollout_len": int(self.rollout_len),
             "update_epoch": int(self.update_epoch),
             "batch_size": int(self.batch_size),
+            "hidden_dim": int(self.hidden_dim),
             "init_log_std": float(self.init_log_std),
             "min_log_std": float(self.actor.min_log_std),
             "max_log_std": float(self.actor.max_log_std),
+            "obs_dim": int(self.obs_dim),
+            "action_dim": int(self.action_dim),
+            "action_low": self.action_low.detach().cpu().numpy().astype(float).tolist(),
+            "action_high": self.action_high.detach().cpu().numpy().astype(float).tolist(),
+            "env_id": self._env_id(),
         }
         if eval_seed_start is not None and eval_seed_end is not None:
             checkpoint["eval_mean_reward"] = float(score)
@@ -357,6 +405,24 @@ class PPOAgent:
             self.eval_seed_start,
             self.eval_seed_end,
         )
+
+    def save_due_snapshots(self) -> None:
+        for snapshot_step in self.snapshot_steps:
+            if snapshot_step in self.saved_snapshot_steps or self.total_step < snapshot_step:
+                continue
+            score = self.eval_best_score if np.isfinite(self.eval_best_score) else self.best_score
+            self.save_checkpoint(
+                self.snapshot_paths[snapshot_step],
+                score,
+                f"fixed_step_{snapshot_step}",
+                self.eval_seed_start,
+                self.eval_seed_end,
+            )
+            self.saved_snapshot_steps.add(snapshot_step)
+            print(
+                f"Saved fixed-step snapshot {self.snapshot_paths[snapshot_step]} "
+                f"at training_environment_step={self.total_step}"
+            )
 
     def load_model(self, model_path: str) -> None:
         try:
@@ -438,10 +504,10 @@ class PPOAgent:
                             "eval/mean_reward": mean_reward,
                             "eval/best_mean_reward": self.eval_best_score,
                         })
-                    if self.target_eval_mean is not None and self.eval_best_score > self.target_eval_mean:
+                    if self.target_eval_mean is not None and self.eval_best_score >= self.target_eval_mean:
                         print(
                             f"Target eval mean reached: {self.eval_best_score:.3f} "
-                            f"> {self.target_eval_mean:.3f}. Stopping training."
+                            f">= {self.target_eval_mean:.3f}. Stopping training."
                         )
                         stop_training = True
                     next_eval_step += self.eval_interval
@@ -469,6 +535,7 @@ class PPOAgent:
 
             if self.states:
                 actor_loss, critic_loss, entropy, approx_kl, clip_fraction = self.update_model(state)
+                self.save_due_snapshots()
                 if self.use_wandb:
                     wandb.log({
                         "step": self.total_step,
@@ -478,6 +545,8 @@ class PPOAgent:
                         "approx_kl": approx_kl,
                         "clip_fraction": clip_fraction,
                         "action/log_std": self.actor.log_std.detach().mean().item(),
+                        "action/log_std_min": self.actor.log_std.detach().min().item(),
+                        "action/log_std_max": self.actor.log_std.detach().max().item(),
                     })
 
             if stop_training:
@@ -528,12 +597,14 @@ def parse_args():
     parser.add_argument("--num-episodes", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=77)
     parser.add_argument("--entropy-weight", type=float, default=1e-3)
+    parser.add_argument("--value-coef", type=float, default=0.5)
     parser.add_argument("--tau", type=float, default=0.95)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--epsilon", type=float, default=0.2)
     parser.add_argument("--rollout-len", type=int, default=2048)
     parser.add_argument("--update-epoch", type=int, default=10)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
+    parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--init-log-std", type=float, default=-0.5)
     parser.add_argument("--min-log-std", type=float, default=-2.0)
     parser.add_argument("--max-log-std", type=float, default=0.5)
@@ -545,6 +616,7 @@ def parse_args():
     parser.add_argument("--target-eval-mean", type=float, default=None)
     parser.add_argument("--disable-train-eval", action="store_true")
     parser.add_argument("--save-dir", type=str, default=".")
+    parser.add_argument("--snapshot-steps", type=str, default="1000000,1500000,2000000,2500000,3000000")
     parser.add_argument("--eval-episodes", type=int, default=20)
     parser.add_argument("--seed-start", type=int, default=0)
     parser.add_argument("--seed-end", type=int, default=19)
@@ -553,6 +625,7 @@ def parse_args():
     parser.add_argument("--video-folder", type=str, default="videos/ppo_walker")
     args = parser.parse_args()
     args.use_wandb = not args.no_wandb
+    args.snapshot_steps = parse_snapshot_steps(args.snapshot_steps)
     return args
 
 
