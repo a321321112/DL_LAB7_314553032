@@ -27,6 +27,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Add n-step A2C update controls | `404bb71` | `python3 -m py_compile a2c_pendulum.py` passed | Added n-step rollout updates, reward scaling, and advantage normalization. |
 | Done | Add action log std controls | `18bce46` | `python3 -m py_compile a2c_pendulum.py` passed | Added configurable Gaussian action std initialization and clamp bounds. |
 | Done | Add eval target early stopping | `5ed7aa8` | `python3 -m py_compile a2c_pendulum.py` passed | Added `--target-eval-mean` to stop training once eval-best mean passes the target. |
+| Done | Prepare Task 2 PPO file | Pending | `python3 -m py_compile ppo_pendulum.py` passed | Renamed Task 2 template to final source path. |
 
 ## Validation Log
 
@@ -56,6 +57,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-15 17:43:02 CST: Commit `18bce46` pushed to `origin/main`.
 - 2026-05-15 18:43:22 CST: Added `--target-eval-mean` so long training can stop automatically after fixed-seed eval-best mean passes the target. `python3 -m py_compile a2c_pendulum.py` passed.
 - 2026-05-15 18:43:22 CST: Commit `5ed7aa8` pushed to `origin/main`.
+- 2026-05-16 10:28:57 CST: Prepared Task 2 PPO source path as `ppo_pendulum.py`. `python3 -m py_compile ppo_pendulum.py` passed.
 
 ## Current Task 1 Commands
 
