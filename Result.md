@@ -30,6 +30,12 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 3 run 2 - 2.5M | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 955.271 | >= 2500 | Not passed |
 | Task 3 run 2 - 3M | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2020.433 | >= 2500 | Not passed |
 | Task 3 run 2 - best | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_best_v2.pt` | 1,700,000 | 2537.552 | >= 2500 | Passed |
+| Task 3 run 3 - 1M | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 1351.505 | >= 2500 | Not passed |
+| Task 3 run 3 - 1.5M | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1489.832 | >= 2500 | Not passed |
+| Task 3 run 3 - 2M | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 2096.274 | >= 2500 | Not passed |
+| Task 3 run 3 - 2.5M | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 3025.007 | >= 2500 | Passed |
+| Task 3 run 3 - 3M | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2643.701 | >= 2500 | Passed |
+| Task 3 run 3 - best | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_best_v3.pt` | 3,250,000 | 3662.311 | >= 2500 | Passed |
 
 ## Task 1: A2C on Pendulum-v1
 
@@ -1673,3 +1679,123 @@ Before packaging, rename or copy `LAB7_314553032_task3_best_v2.pt` to the requir
 ```txt
 LAB7_314553032_task3_best.pt
 ```
+
+### Run 3 Training Settings
+
+Run 3 keeps the stable v2 recipe but slightly increases early policy improvement speed:
+
+```bash
+python ppo_walker.py \
+  --mode train \
+  --num-episodes 800 \
+  --actor-lr 1.5e-4 \
+  --critic-lr 3e-4 \
+  --discount-factor 0.99 \
+  --tau 0.95 \
+  --entropy-weight 3e-3 \
+  --value-coef 0.5 \
+  --epsilon 0.12 \
+  --rollout-len 4096 \
+  --update-epoch 5 \
+  --batch-size 256 \
+  --max-grad-norm 0.5 \
+  --hidden-dim 256 \
+  --init-log-std -0.5 \
+  --min-log-std -1.5 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task3_train_latest_v3.pt \
+  --eval-model-path LAB7_314553032_task3_best_v3.pt \
+  --snapshot-steps 1000000,1500000,2000000,2500000,3000000 \
+  --eval-interval 50000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 9 \
+  --wandb-run-name walker-ppo-v3-faster-early
+```
+
+### Run 3 Evaluation Summary
+
+Date recorded: 2026-05-16
+
+| Checkpoint | Training Environment Step | Mean Reward | Target | Status |
+| --- | ---: | ---: | ---: | --- |
+| `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 1351.505 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1489.832 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 2096.274 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 3025.007 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2643.701 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_best_v3.pt` | 3,250,000 | 3662.311 | >= 2500 | **Passed** |
+
+### Run 3 Evaluation Command
+
+```bash
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_3m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_best_v3.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+```
+
+### Run 3 Per-Seed Rewards
+
+| Seed | 1M | 1.5M | 2M | 2.5M | 3M | Best v3 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 1290.695 | 1905.966 | 1485.480 | 3392.802 | 2634.615 | 3597.424 |
+| 1 | 1305.807 | 1427.701 | 3267.287 | 3292.333 | 3506.680 | 3788.385 |
+| 2 | 1216.285 | 2083.619 | 1616.946 | 3286.938 | 1366.959 | 3745.848 |
+| 3 | 1386.031 | 1744.130 | 1640.494 | 3368.474 | 1465.434 | 3577.045 |
+| 4 | 1284.787 | 1182.277 | 2879.988 | 3254.150 | 1495.366 | 3743.760 |
+| 5 | 1386.807 | 1231.507 | 3151.769 | 3131.822 | 1276.794 | 3435.139 |
+| 6 | 1511.068 | 1525.156 | 3431.682 | 2067.281 | 3395.611 | 3745.788 |
+| 7 | 1222.347 | 1378.221 | 1628.690 | 3092.386 | 1792.483 | 3645.482 |
+| 8 | 959.760 | 1610.840 | 1880.195 | 2843.585 | 3454.645 | 3581.310 |
+| 9 | 1313.990 | 1439.484 | 1882.388 | 2616.546 | 3385.815 | 3642.751 |
+| 10 | 1186.265 | 1595.911 | 1602.815 | 3217.869 | 3491.036 | 3603.424 |
+| 11 | 1382.123 | 1182.841 | 1730.851 | 3260.425 | 3459.783 | 3776.546 |
+| 12 | 1379.670 | 1181.891 | 2052.878 | 3373.599 | 3670.983 | 3535.018 |
+| 13 | 1393.417 | 1277.466 | 1598.825 | 3398.524 | 2984.231 | 3764.545 |
+| 14 | 1552.808 | 1325.541 | 1734.187 | 3448.263 | 1330.728 | 3852.281 |
+| 15 | 1404.375 | 1621.333 | 2555.595 | 2938.208 | 3355.766 | 3822.981 |
+| 16 | 1455.564 | 2155.380 | 1932.438 | 1725.072 | 3564.000 | 3302.595 |
+| 17 | 1682.610 | 1292.611 | 2306.116 | 3443.946 | 2385.905 | 3635.475 |
+| 18 | 1331.346 | 1621.239 | 1646.213 | 1854.567 | 1323.917 | 3815.840 |
+| 19 | 1384.341 | 1013.527 | 1900.641 | 3493.340 | 3533.279 | 3634.581 |
+| Mean | 1351.505 | 1489.832 | 2096.274 | 3025.007 | 2643.701 | 3662.311 |
+
+### Run 3 Standard Check
+
+- Required average reward: `>= 2500`
+- Earliest passing fixed snapshot: `LAB7_314553032_task3_ppo_2p5m.pt`
+- Earliest passing fixed snapshot mean reward: `3025.007`
+- Earliest passing fixed snapshot training environment step: `2502656`
+- Best checkpoint: `LAB7_314553032_task3_best_v3.pt`
+- Best checkpoint mean reward: `3662.311`
+- Best checkpoint training environment step: `3250000`
+- Current conclusion: run 3 improves Task 3 from the run 2 best-only pass to a fixed-snapshot pass at 2.5M steps.
+
+### Run 3 Curve Comparison Against Run 2
+
+Run 3 is more aggressive than run 2:
+
+| Setting | Run 2 stable | Run 3 faster early | Expected effect |
+| --- | ---: | ---: | --- |
+| Actor LR | 1e-4 | 1.5e-4 | Faster policy improvement, higher instability risk |
+| Clip epsilon | 0.1 | 0.12 | Allows slightly larger PPO policy movement |
+| Eval interval | 100000 | 50000 | Captures good checkpoints more often |
+| Entropy weight | 3e-3 | 3e-3 | Same exploration pressure |
+| Min log std | -1.5 | -1.5 | Same lower bound for stochasticity |
+| Rollout length | 4096 | 4096 | Same rollout stability |
+| Update epochs | 5 | 5 | Same conservative reuse of rollout data |
+| Batch size | 256 | 256 | Same lower gradient noise |
+
+Observed curve differences:
+
+- Run 3 return grows later but reaches much higher final performance. The best checkpoint reaches `3662.311`, far above run 2's `2537.552`.
+- Run 3 `action/log_std` and entropy decline faster than run 2. This means the policy becomes more deterministic earlier, which helped exploit a good gait after the agent discovered it.
+- Run 3 `clip_fraction` rises higher than run 2 late in training, and critic loss spikes more strongly. This shows the increased actor LR and epsilon make updates more aggressive.
+- The early fixed snapshots are worse than run 2: run 3 1M is `1351.505`, while run 2 1M was `2439.417`. The faster setting did not improve early sample efficiency; it improved later exploitation.
+- Run 3 becomes clearly strong by 2.5M and remains above target at 3M, so it is better for final performance but not better for 1M/1.5M scoring.
+
+### Run 3 Conclusion
+
+Run 3 passes Task 3 at the 2.5M fixed snapshot and achieves the best overall model so far. For final submission scoring by fixed snapshot, use run 3 snapshots if the goal is at least a 2.5M pass. If the goal is to pass earlier, the next experiment should keep run 2's early stability but add only a small amount of extra early learning speed.

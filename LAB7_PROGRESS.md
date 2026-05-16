@@ -35,6 +35,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Fix Walker MuJoCo imageio dependency | Current commit | `python3 -m py_compile ppo_walker.py` passed | Added `imageio` packages to requirements and only requests `rgb_array` rendering when video output is enabled. |
 | Done | Record Task 3 baseline result | Current commit | Result review | Recorded 1M, 1.5M, 2M, 2.5M, 3M, and best checkpoint 20-seed evaluations. |
 | Done | Record passing Task 3 result | Current commit | Result review | Recorded stable v2 Task 3 evaluations; `LAB7_314553032_task3_best_v2.pt` passes with 20-seed mean reward `2537.552`. |
+| Done | Record Task 3 faster-early result | Current commit | Result review | Recorded v3 Task 3 evaluations; fixed 2.5M snapshot passes with mean reward `3025.007`, and best v3 reaches `3662.311`. |
 
 ## Validation Log
 
@@ -74,6 +75,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-16 12:45:00 CST: Fixed Task 3 startup dependency issue from Gymnasium MuJoCo importing `imageio`. Added `imageio` and `imageio-ffmpeg` to `requirements.txt`, and changed `ppo_walker.py` to request `render_mode="rgb_array"` only when `--render-video` is used.
 - 2026-05-16 13:10:00 CST: Recorded Task 3 run 1 evaluations. Best fixed snapshot is 3M with mean reward `2083.043`; train-time best checkpoint has 20-seed mean reward `1908.055`. Current run does not pass the `>=2500` target.
 - 2026-05-16 13:35:00 CST: Recorded Task 3 run 2 stable PPO evaluations. `LAB7_314553032_task3_best_v2.pt` reaches 20-seed mean reward `2537.552` at `1700000` environment steps and passes the Task 3 target.
+- 2026-05-16 14:05:00 CST: Recorded Task 3 run 3 faster-early PPO evaluations. Fixed `2.5M` snapshot reaches mean reward `3025.007`, fixed `3M` snapshot reaches `2643.701`, and `LAB7_314553032_task3_best_v3.pt` reaches `3662.311`.
 
 ## Current Task 1 Commands
 
