@@ -16,7 +16,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 1 run 8 | A2C + n-step + log-std control + longer training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt` | 520,000 | -154.011 | > -150 | Not passed |
 | Task 1 run 9 | A2C + n-step + log-std control + untilpass training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt` | 520,000 | -154.011 | > -150 | Not passed |
 | Task 1 run 10 | A2C + n-step + log-std control + gamma 0.95 | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | 720,000 | -144.271 | > -150 | Passed |
-| Task 2 | PPO-Clip + GAE | `Pendulum-v1` | Pending | Pending | Pending | > -150 | Pending |
+| Task 2 run 1 | PPO-Clip + GAE | `Pendulum-v1` | `LAB7_314553032_task2_ppo_pendulum.pt` | 80,000 | -170.936 | > -150 | Not passed |
 | Task 3 | PPO-Clip + GAE | `Walker2d-v5` | Pending | Pending | Pending | >= 2500 | Pending |
 
 ## Task 1: A2C on Pendulum-v1
@@ -1184,3 +1184,136 @@ Increasing `gamma` from `0.9` to `0.95` improved the 20-seed mean by `9.740` rew
 ### Run 10 Artifact Note
 
 Keep `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` as the Task 1 final model snapshot. This file should be included in the final homework submission package if the assignment asks for model snapshots. It should not be committed to git unless explicitly required, because model checkpoint files are binary artifacts and may be large.
+
+## Task 2: PPO-Clip + GAE on Pendulum-v1
+
+### Run 1 Training Command
+
+```bash
+python ppo_pendulum.py \
+  --mode train \
+  --num-episodes 1000 \
+  --actor-lr 3e-4 \
+  --critic-lr 1e-3 \
+  --discount-factor 0.9 \
+  --tau 0.95 \
+  --entropy-weight 1e-3 \
+  --epsilon 0.2 \
+  --rollout-len 2048 \
+  --update-epoch 10 \
+  --batch-size 64 \
+  --model-path LAB7_314553032_task2_ppo_pendulum_trainbest.pt \
+  --eval-model-path LAB7_314553032_task2_ppo_pendulum.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --target-eval-mean -150 \
+  --wandb-run-name pendulum-ppo-baseline
+```
+
+### Run 1 Evaluation Metadata
+
+- Date: 2026-05-16 11:30:39 CST
+- Algorithm: PPO-Clip with GAE
+- Environment: `Pendulum-v1`
+- Model snapshot: `LAB7_314553032_task2_ppo_pendulum.pt`
+- Training environment steps in selected checkpoint: `80000`
+- Evaluation device shown by run: `cpu`
+- Evaluation seeds: `0` to `19`
+- Number of evaluation episodes: `20`
+- Mean reward: `-170.936`
+- Assignment target: average reward `> -150` over 20 evaluation episodes
+- Result: **Not passed**
+
+### Run 1 Evaluation Command
+
+```bash
+python ppo_pendulum.py \
+  --mode eval \
+  --model-path LAB7_314553032_task2_ppo_pendulum.pt \
+  --seed-start 0 \
+  --seed-end 19 \
+  --eval-episodes 20 \
+  --no-wandb
+```
+
+### Run 1 Per-Seed Rewards
+
+| Seed | Reward | Above -150 |
+| ---: | ---: | --- |
+| 0 | -130.543 | Yes |
+| 1 | -0.887 | Yes |
+| 2 | -126.203 | Yes |
+| 3 | -271.847 | No |
+| 4 | -415.161 | No |
+| 5 | -124.497 | Yes |
+| 6 | -0.751 | Yes |
+| 7 | -127.332 | Yes |
+| 8 | -130.858 | Yes |
+| 9 | -272.318 | No |
+| 10 | -363.199 | No |
+| 11 | -276.061 | No |
+| 12 | -133.893 | Yes |
+| 13 | -248.559 | No |
+| 14 | -263.039 | No |
+| 15 | -126.262 | Yes |
+| 16 | -5.244 | Yes |
+| 17 | -269.666 | No |
+| 18 | -130.180 | Yes |
+| 19 | -2.220 | Yes |
+
+### Run 1 Standard Check
+
+- Required average reward: `> -150`
+- Current average reward: `-170.936`
+- Gap to target: `20.936` reward points below target
+- Seeds above `-150`: `12 / 20`
+- Seeds below or equal to `-150`: `8 / 20`
+- Current selected checkpoint step: `80000`
+- Current conclusion: run 1 does **not** meet the Task 2 performance standard.
+
+### Run 1 Curve Notes
+
+- `action/log_std` drops quickly to the lower clamp around `-2`, so the policy becomes nearly deterministic too early.
+- Training return remains highly unstable after the early learning phase, with many episodes still dropping near `-1500`.
+- The eval-best checkpoint was selected at only `80000` environment steps, while the W&B step metric shows training continued much longer. This indicates later training did not improve the fixed-seed eval mean.
+- The failed seeds are similar to Task 1 hard seeds, but seed `4` and seed `10` are worse than the passing A2C run. PPO did not yet improve robustness.
+
+### Run 1 Next Action
+
+Do not continue the same setting. The next run should keep exploration alive longer and make PPO updates less aggressive.
+
+Recommended next training command:
+
+```bash
+python ppo_pendulum.py \
+  --mode train \
+  --num-episodes 1000 \
+  --actor-lr 1e-4 \
+  --critic-lr 5e-4 \
+  --discount-factor 0.95 \
+  --tau 0.95 \
+  --entropy-weight 2e-3 \
+  --epsilon 0.2 \
+  --rollout-len 4096 \
+  --update-epoch 5 \
+  --batch-size 128 \
+  --init-log-std -0.25 \
+  --min-log-std -1.0 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task2_ppo_pendulum_trainbest_v2.pt \
+  --eval-model-path LAB7_314553032_task2_ppo_pendulum_v2.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --target-eval-mean -150 \
+  --wandb-run-name pendulum-ppo-stable-v2
+```
+
+Rationale:
+
+- `actor-lr 1e-4` and `update-epoch 5` reduce policy update aggressiveness.
+- `rollout-len 4096` and `batch-size 128` give PPO a more stable batch.
+- `min-log-std -1.0` prevents exploration from collapsing to `std ~= 0.135`; the minimum becomes `std ~= 0.368`.
+- `entropy-weight 2e-3` helps resist premature deterministic behavior.
+- `discount-factor 0.95` follows the successful Task 1 diagnosis that hard seeds need a longer-horizon signal.
