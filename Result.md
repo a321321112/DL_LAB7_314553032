@@ -24,6 +24,12 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 3 run 1 - 2.5M | PPO-Clip + GAE | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,500,608 | 2033.436 | >= 2500 | Not passed |
 | Task 3 run 1 - 3M | PPO-Clip + GAE | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,000,320 | 2083.043 | >= 2500 | Not passed |
 | Task 3 run 1 - best | PPO-Clip + GAE | `Walker2d-v5` | `LAB7_314553032_task3_best.pt` | 1,400,000 | 1908.055 | >= 2500 | Not passed |
+| Task 3 run 2 - 1M | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 2439.417 | >= 2500 | Not passed |
+| Task 3 run 2 - 1.5M | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 2166.355 | >= 2500 | Not passed |
+| Task 3 run 2 - 2M | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1405.281 | >= 2500 | Not passed |
+| Task 3 run 2 - 2.5M | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 955.271 | >= 2500 | Not passed |
+| Task 3 run 2 - 3M | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2020.433 | >= 2500 | Not passed |
+| Task 3 run 2 - best | PPO-Clip + GAE tuned | `Walker2d-v5` | `LAB7_314553032_task3_best_v2.pt` | 1,700,000 | 2537.552 | >= 2500 | Passed |
 
 ## Task 1: A2C on Pendulum-v1
 
@@ -1549,3 +1555,121 @@ Current Task 3 run is promising but not passed. The next run should prioritize s
 - reduce PPO update aggressiveness;
 - prevent exploration from collapsing to `log_std=-2.0` too early;
 - keep fixed 3M snapshots for grading.
+
+### Run 2 Training Settings
+
+```bash
+python ppo_walker.py \
+  --mode train \
+  --num-episodes 800 \
+  --actor-lr 1e-4 \
+  --critic-lr 3e-4 \
+  --discount-factor 0.99 \
+  --tau 0.95 \
+  --entropy-weight 3e-3 \
+  --value-coef 0.5 \
+  --epsilon 0.1 \
+  --rollout-len 4096 \
+  --update-epoch 5 \
+  --batch-size 256 \
+  --max-grad-norm 0.5 \
+  --hidden-dim 256 \
+  --init-log-std -0.5 \
+  --min-log-std -1.5 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task3_train_latest_v2.pt \
+  --eval-model-path LAB7_314553032_task3_best_v2.pt \
+  --snapshot-steps 1000000,1500000,2000000,2500000,3000000 \
+  --eval-interval 100000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 9 \
+  --wandb-run-name walker-ppo-stable-v2
+```
+
+### Run 2 Evaluation Summary
+
+Date recorded: 2026-05-16
+
+| Checkpoint | Training Environment Step | Mean Reward | Target | Status |
+| --- | ---: | ---: | ---: | --- |
+| `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 2439.417 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 2166.355 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1405.281 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 955.271 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2020.433 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_best_v2.pt` | 1,700,000 | 2537.552 | >= 2500 | **Passed** |
+
+### Run 2 Evaluation Command
+
+```bash
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_3m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_best_v2.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+```
+
+### Run 2 Per-Seed Rewards
+
+| Seed | 1M | 1.5M | 2M | 2.5M | 3M | Best v2 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 2411.908 | 2674.958 | 1306.645 | 894.438 | 2713.420 | 2640.454 |
+| 1 | 2316.552 | 2687.454 | 1036.007 | 992.814 | 1554.247 | 2544.356 |
+| 2 | 2930.882 | 1808.179 | 1365.959 | 913.937 | 1705.652 | 2491.398 |
+| 3 | 2478.689 | 2101.804 | 1338.756 | 961.491 | 1482.401 | 2482.266 |
+| 4 | 2408.352 | 2739.682 | 1304.574 | 979.996 | 2920.900 | 2503.973 |
+| 5 | 2396.114 | 1892.332 | 1242.153 | 1007.464 | 2796.372 | 2473.379 |
+| 6 | 2646.261 | 2151.019 | 1276.414 | 922.843 | 1297.314 | 2572.261 |
+| 7 | 2359.963 | 2115.078 | 1287.798 | 912.076 | 3355.378 | 2502.200 |
+| 8 | 2337.186 | 1873.658 | 1209.507 | 910.283 | 3285.746 | 2474.193 |
+| 9 | 2448.391 | 2177.395 | 1287.752 | 916.531 | 1290.791 | 2510.019 |
+| 10 | 2442.647 | 2077.540 | 1306.879 | 932.337 | 3012.168 | 2596.110 |
+| 11 | 2442.286 | 2556.785 | 1456.574 | 1031.437 | 1361.801 | 2467.947 |
+| 12 | 2353.220 | 1823.492 | 1339.277 | 961.058 | 2190.873 | 2513.318 |
+| 13 | 2361.262 | 1868.155 | 1374.849 | 964.567 | 1444.793 | 2516.267 |
+| 14 | 2542.288 | 2074.982 | 1224.326 | 929.839 | 1645.265 | 2674.430 |
+| 15 | 2353.733 | 2255.079 | 2522.750 | 997.887 | 1464.189 | 2485.064 |
+| 16 | 2293.603 | 1660.307 | 1337.298 | 964.505 | 1425.418 | 2624.149 |
+| 17 | 2557.894 | 2699.748 | 1034.751 | 997.492 | 1438.135 | 2502.879 |
+| 18 | 2355.721 | 1745.451 | 1155.417 | 964.874 | 1503.060 | 2589.568 |
+| 19 | 2351.384 | 2344.005 | 2697.929 | 949.554 | 2520.744 | 2586.816 |
+| Mean | 2439.417 | 2166.355 | 1405.281 | 955.271 | 2020.433 | 2537.552 |
+
+### Run 2 Standard Check
+
+- Required average reward: `>= 2500`
+- Current best 20-seed mean reward: `2537.552`
+- Margin above target: `37.552`
+- Best checkpoint: `LAB7_314553032_task3_best_v2.pt`
+- Best checkpoint training environment step: `1700000`
+- Seeds at or above `2500`: `13 / 20`
+- Seeds below `2500`: `7 / 20`
+- Current conclusion: run 2 **meets** the Task 3 performance standard.
+
+### Run 2 Curve Diagnosis
+
+- Compared with run 1, `action/log_std` declines much more slowly and does not hit the `-2.0` collapse. The average log standard deviation is still around `-0.9` late in training, so the policy keeps enough stochasticity for Walker2d.
+- Entropy stays high for far longer. This improves exploration and prevents the agent from committing too early to a brittle gait.
+- `clip_fraction` falls from the run 1 range of roughly `0.55-0.65` to about `0.13-0.22`, meaning fewer samples are being clipped. The PPO update is therefore less aggressive and closer to the collected rollout distribution.
+- The curve is slower at the beginning because the update is more conservative, but the later policy is much more robust across seeds.
+- Using evaluation seeds `0` to `9` during training selected a checkpoint that generalizes better to the final `0` to `19` evaluation.
+
+### Run 2 Conclusion
+
+Task 3 is now passed by `LAB7_314553032_task3_best_v2.pt` with mean reward `2537.552` at `1700000` environment steps. For final submission, keep:
+
+```txt
+LAB7_314553032_task3_ppo_1m.pt
+LAB7_314553032_task3_ppo_1p5m.pt
+LAB7_314553032_task3_ppo_2m.pt
+LAB7_314553032_task3_ppo_2p5m.pt
+LAB7_314553032_task3_ppo_3m.pt
+LAB7_314553032_task3_best_v2.pt
+```
+
+Before packaging, rename or copy `LAB7_314553032_task3_best_v2.pt` to the required submission name:
+
+```txt
+LAB7_314553032_task3_best.pt
+```
