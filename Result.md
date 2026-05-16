@@ -17,6 +17,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 1 run 9 | A2C + n-step + log-std control + untilpass training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt` | 520,000 | -154.011 | > -150 | Not passed |
 | Task 1 run 10 | A2C + n-step + log-std control + gamma 0.95 | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | 720,000 | -144.271 | > -150 | Passed |
 | Task 2 run 1 | PPO-Clip + GAE | `Pendulum-v1` | `LAB7_314553032_task2_ppo_pendulum.pt` | 80,000 | -170.936 | > -150 | Not passed |
+| Task 2 run 2 | PPO-Clip + GAE tuned | `Pendulum-v1` | `LAB7_314553032_task2_ppo_pendulum_v2.pt` | 200,000 | -149.784 | > -150 | Passed |
 | Task 3 | PPO-Clip + GAE | `Walker2d-v5` | Pending | Pending | Pending | >= 2500 | Pending |
 
 ## Task 1: A2C on Pendulum-v1
@@ -1317,3 +1318,130 @@ Rationale:
 - `min-log-std -1.0` prevents exploration from collapsing to `std ~= 0.135`; the minimum becomes `std ~= 0.368`.
 - `entropy-weight 2e-3` helps resist premature deterministic behavior.
 - `discount-factor 0.95` follows the successful Task 1 diagnosis that hard seeds need a longer-horizon signal.
+
+### Run 2 Training Command
+
+```bash
+python ppo_pendulum.py \
+  --mode train \
+  --num-episodes 1000 \
+  --actor-lr 1e-4 \
+  --critic-lr 5e-4 \
+  --discount-factor 0.95 \
+  --tau 0.95 \
+  --entropy-weight 2e-3 \
+  --epsilon 0.2 \
+  --rollout-len 4096 \
+  --update-epoch 5 \
+  --batch-size 128 \
+  --init-log-std -0.25 \
+  --min-log-std -1.0 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task2_ppo_pendulum_trainbest_v2.pt \
+  --eval-model-path LAB7_314553032_task2_ppo_pendulum_v2.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --target-eval-mean -150 \
+  --wandb-run-name pendulum-ppo-stable-v2
+```
+
+### Run 2 Evaluation Metadata
+
+- Date: 2026-05-16 11:47:02 CST
+- Algorithm: PPO-Clip with GAE
+- Environment: `Pendulum-v1`
+- Model snapshot: `LAB7_314553032_task2_ppo_pendulum_v2.pt`
+- Training environment steps in selected checkpoint: `200000`
+- Evaluation device shown by run: `cpu`
+- Evaluation seeds: `0` to `19`
+- Number of evaluation episodes: `20`
+- Mean reward: `-149.784`
+- Assignment target: average reward `> -150` over 20 evaluation episodes
+- Result: **Passed**
+
+### Run 2 Evaluation Command
+
+```bash
+python ppo_pendulum.py \
+  --mode eval \
+  --model-path LAB7_314553032_task2_ppo_pendulum_v2.pt \
+  --seed-start 0 \
+  --seed-end 19 \
+  --eval-episodes 20 \
+  --no-wandb
+```
+
+### Run 2 Per-Seed Rewards
+
+| Seed | Reward | Above -150 |
+| ---: | ---: | --- |
+| 0 | -127.955 | Yes |
+| 1 | -0.631 | Yes |
+| 2 | -125.184 | Yes |
+| 3 | -245.315 | No |
+| 4 | -262.657 | No |
+| 5 | -118.033 | Yes |
+| 6 | -0.632 | Yes |
+| 7 | -125.365 | Yes |
+| 8 | -130.550 | Yes |
+| 9 | -257.645 | No |
+| 10 | -321.026 | No |
+| 11 | -258.130 | No |
+| 12 | -132.190 | Yes |
+| 13 | -242.966 | No |
+| 14 | -127.974 | Yes |
+| 15 | -123.089 | Yes |
+| 16 | -3.588 | Yes |
+| 17 | -260.603 | No |
+| 18 | -130.003 | Yes |
+| 19 | -2.150 | Yes |
+
+### Run 2 Standard Check
+
+- Required average reward: `> -150`
+- Current average reward: `-149.784`
+- Margin above target: `0.216` reward points
+- Seeds above `-150`: `13 / 20`
+- Seeds below or equal to `-150`: `7 / 20`
+- Current selected checkpoint step: `200000`
+- Current conclusion: run 2 **meets** the Task 2 performance standard and reaches the threshold at the full-score step boundary.
+
+### Run 2 Comparison
+
+| Metric | Task 2 Run 1 | Task 2 Run 2 |
+| --- | ---: | ---: |
+| Actor LR | 3e-4 | 1e-4 |
+| Critic LR | 1e-3 | 5e-4 |
+| Gamma | 0.9 | 0.95 |
+| Entropy weight | 1e-3 | 2e-3 |
+| Rollout length | 2048 | 4096 |
+| Update epochs | 10 | 5 |
+| Batch size | 64 | 128 |
+| Min log std | -2.0 | -1.0 |
+| Env steps in selected checkpoint | 80,000 | 200,000 |
+| Mean reward | -170.936 | -149.784 |
+| Gap or margin to target | -20.936 | +0.216 |
+| Seeds above -150 | 12 / 20 | 13 / 20 |
+
+### Why Run 2 Was Much Smoother
+
+- The policy did not collapse exploration as quickly. In run 1, `action/log_std` hit the `-2` lower clamp early. In run 2, `min-log-std=-1.0` kept the minimum standard deviation around `exp(-1) ~= 0.368`, so PPO continued exploring hard initial states longer.
+- The PPO update became less aggressive. Reducing `actor-lr` from `3e-4` to `1e-4` and `update-epoch` from `10` to `5` reduced destructive policy jumps.
+- The rollout batch became more stable. `rollout-len=4096` and `batch-size=128` gave each PPO update more diverse trajectories and less noisy gradient estimates.
+- `gamma=0.95` gave the agent a longer-horizon learning signal, which helped the same hard seeds that limited Task 1 A2C.
+- PPO's clipped objective lets the model reuse rollout data across mini-batch epochs while limiting policy-ratio changes. Once the hyperparameters stopped over-updating the policy, PPO became more sample-efficient than the tuned A2C run.
+
+### Why the Environment Interaction Count Is Lower
+
+Task 2 run 2 selected a passing checkpoint at `200000` environment steps, while the best Task 1 A2C checkpoint passed at `720000` steps. PPO needed fewer environment interactions because each rollout is reused for several mini-batch epochs. In other words, PPO performs more gradient updates per collected sample, but clipping prevents those repeated updates from moving too far away from the behavior policy that collected the data.
+
+The W&B panel x-axis can be visually confusing because update logs are fewer than environment steps. For grading and report, use the explicit checkpoint field:
+
+```txt
+training_environment_step=200000
+```
+
+### Run 2 Artifact Note
+
+Keep `LAB7_314553032_task2_ppo_pendulum_v2.pt` as the current Task 2 final model snapshot. It should be included in the final homework submission package if model snapshots are required. Do not commit it to git unless explicitly requested.
