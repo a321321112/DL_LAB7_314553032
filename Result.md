@@ -15,7 +15,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 1 run 7 | A2C + n-step + log-std control + eval-best checkpoint | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt` | 500,000 | -164.090 | > -150 | Not passed |
 | Task 1 run 8 | A2C + n-step + log-std control + longer training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt` | 520,000 | -154.011 | > -150 | Not passed |
 | Task 1 run 9 | A2C + n-step + log-std control + untilpass training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt` | 520,000 | -154.011 | > -150 | Not passed |
-| Task 1 run 10 | A2C + n-step + log-std control + gamma 0.95 | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | Pending eval | Pending eval | > -150 | Pending eval |
+| Task 1 run 10 | A2C + n-step + log-std control + gamma 0.95 | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | 720,000 | -144.271 | > -150 | Passed |
 | Task 2 | PPO-Clip + GAE | `Pendulum-v1` | Pending | Pending | Pending | > -150 | Pending |
 | Task 3 | PPO-Clip + GAE | `Walker2d-v5` | Pending | Pending | Pending | >= 2500 | Pending |
 
@@ -34,7 +34,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Run 7 | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-logstd-evalbest` | Adds `--init-log-std -0.5`, `--min-log-std -2.0`, and `--max-log-std 0.5`. |
 | Run 8 | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt` | 4000 | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-logstd-long` | Same as run 7, only longer training. |
 | Run 9 | `LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt` | 10000 cap | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-untilpass` | Same as run 8 with `--target-eval-mean -150`; target was not reached. |
-| Run 10 | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | 10000 cap | 3e-5 | 3e-4 | 0.95 | 1e-4 | `pendulum-a2c-gamma095` | Same as run 9 except `--discount-factor 0.95`; pending evaluation. |
+| Run 10 | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | 10000 cap | 3e-5 | 3e-4 | 0.95 | 1e-4 | `pendulum-a2c-gamma095` | Same as run 9 except `--discount-factor 0.95`; passed Task 1 target. |
 
 ### Run 1 Evaluation Metadata
 
@@ -1108,10 +1108,79 @@ python a2c_pendulum.py \
   --wandb-run-name pendulum-a2c-gamma095
 ```
 
-### Run 10 Evaluation Status
+### Run 10 Evaluation Metadata
 
-- Status: Pending evaluation
-- Expected model snapshot: `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt`
+- Date: 2026-05-16 10:20:09 CST
+- Algorithm: A2C with n-step rollout updates, reward scaling, advantage normalization, action log-std control, periodic eval-best checkpointing, target eval early stopping, and `gamma=0.95`
+- Environment: `Pendulum-v1`
+- Model snapshot: `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt`
+- Training environment steps in selected checkpoint: `720000`
+- Evaluation device shown by run: `cpu`
 - Evaluation seeds: `0` to `19`
 - Number of evaluation episodes: `20`
-- Assignment target: average reward `> -150`
+- Mean reward: `-144.271`
+- Assignment target: average reward `> -150` over 20 evaluation episodes
+- Result: **Passed**
+
+### Run 10 Evaluation Command
+
+```bash
+python a2c_pendulum.py \
+  --mode eval \
+  --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt \
+  --seed-start 0 \
+  --seed-end 19 \
+  --eval-episodes 20 \
+  --no-wandb
+```
+
+### Run 10 Per-Seed Rewards
+
+| Seed | Reward | Above -150 |
+| ---: | ---: | --- |
+| 0 | -131.044 | Yes |
+| 1 | -1.489 | Yes |
+| 2 | -125.728 | Yes |
+| 3 | -243.061 | No |
+| 4 | -256.891 | No |
+| 5 | -119.188 | Yes |
+| 6 | -1.545 | Yes |
+| 7 | -128.074 | Yes |
+| 8 | -131.416 | Yes |
+| 9 | -257.844 | No |
+| 10 | -333.565 | No |
+| 11 | -253.214 | No |
+| 12 | -132.396 | Yes |
+| 13 | -242.822 | No |
+| 14 | -126.448 | Yes |
+| 15 | -126.482 | Yes |
+| 16 | -3.485 | Yes |
+| 17 | -136.571 | Yes |
+| 18 | -130.977 | Yes |
+| 19 | -3.173 | Yes |
+
+### Run 10 Standard Check
+
+- Required average reward: `> -150`
+- Current average reward: `-144.271`
+- Margin above target: `5.729` reward points
+- Seeds above `-150`: `14 / 20`
+- Seeds below or equal to `-150`: `6 / 20`
+- Current selected checkpoint step: `720000`
+- Current conclusion: run 10 **meets** the Task 1 performance standard.
+
+### Run 10 Comparison
+
+| Metric | Run 8 | Run 9 | Run 10 |
+| --- | ---: | ---: | ---: |
+| Discount factor | 0.9 | 0.9 | 0.95 |
+| Env steps in selected checkpoint | 520,000 | 520,000 | 720,000 |
+| Mean reward | -154.011 | -154.011 | -144.271 |
+| Gap or margin to target | -4.011 | -4.011 | +5.729 |
+| Seeds above -150 | 13 / 20 | 13 / 20 | 14 / 20 |
+
+Increasing `gamma` from `0.9` to `0.95` improved the 20-seed mean by `9.740` reward points and pushed the model over the Task 1 threshold. The result supports the earlier diagnosis that the remaining hard seeds needed a longer-horizon learning signal.
+
+### Run 10 Artifact Note
+
+Keep `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` as the Task 1 final model snapshot. This file should be included in the final homework submission package if the assignment asks for model snapshots. It should not be committed to git unless explicitly required, because model checkpoint files are binary artifacts and may be large.
