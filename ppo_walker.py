@@ -632,7 +632,8 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    env = gym.make("Walker2d-v5", render_mode="rgb_array")
+    render_mode = "rgb_array" if args.render_video else None
+    env = gym.make("Walker2d-v5", render_mode=render_mode)
     random.seed(args.seed)
     np.random.seed(args.seed)
     seed_torch(args.seed)
