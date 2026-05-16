@@ -15,6 +15,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 1 run 7 | A2C + n-step + log-std control + eval-best checkpoint | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt` | 500,000 | -164.090 | > -150 | Not passed |
 | Task 1 run 8 | A2C + n-step + log-std control + longer training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt` | 520,000 | -154.011 | > -150 | Not passed |
 | Task 1 run 9 | A2C + n-step + log-std control + untilpass training | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt` | 520,000 | -154.011 | > -150 | Not passed |
+| Task 1 run 10 | A2C + n-step + log-std control + gamma 0.95 | `Pendulum-v1` | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | Pending eval | Pending eval | > -150 | Pending eval |
 | Task 2 | PPO-Clip + GAE | `Pendulum-v1` | Pending | Pending | Pending | > -150 | Pending |
 | Task 3 | PPO-Clip + GAE | `Walker2d-v5` | Pending | Pending | Pending | >= 2500 | Pending |
 
@@ -33,6 +34,7 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Run 7 | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd.pt` | 2500 | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-logstd-evalbest` | Adds `--init-log-std -0.5`, `--min-log-std -2.0`, and `--max-log-std 0.5`. |
 | Run 8 | `LAB7_314553032_task1_a2c_pendulum_evalbest_logstd_long.pt` | 4000 | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-logstd-long` | Same as run 7, only longer training. |
 | Run 9 | `LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt` | 10000 cap | 3e-5 | 3e-4 | 0.9 | 1e-4 | `pendulum-a2c-untilpass` | Same as run 8 with `--target-eval-mean -150`; target was not reached. |
+| Run 10 | `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt` | 10000 cap | 3e-5 | 3e-4 | 0.95 | 1e-4 | `pendulum-a2c-gamma095` | Same as run 9 except `--discount-factor 0.95`; pending evaluation. |
 
 ### Run 1 Evaluation Metadata
 
@@ -1079,3 +1081,37 @@ python a2c_pendulum.py \
 ```
 
 If `gamma=0.95` still plateaus below `-150`, the next code-level fix should address the action clipping mismatch: the environment receives a clipped action, while the policy gradient currently uses the log probability of the pre-clipped sampled action.
+
+### Run 10 Training Command
+
+Recorded before evaluation on 2026-05-16 09:43:04 CST.
+
+```bash
+python a2c_pendulum.py \
+  --mode train \
+  --num-episodes 10000 \
+  --actor-lr 3e-5 \
+  --critic-lr 3e-4 \
+  --entropy-weight 1e-4 \
+  --discount-factor 0.95 \
+  --n-step 5 \
+  --reward-scale 10.0 \
+  --init-log-std -0.5 \
+  --min-log-std -2.0 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_gamma095.pt \
+  --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt \
+  --eval-interval 20000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 19 \
+  --target-eval-mean -150 \
+  --wandb-run-name pendulum-a2c-gamma095
+```
+
+### Run 10 Evaluation Status
+
+- Status: Pending evaluation
+- Expected model snapshot: `LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt`
+- Evaluation seeds: `0` to `19`
+- Number of evaluation episodes: `20`
+- Assignment target: average reward `> -150`
