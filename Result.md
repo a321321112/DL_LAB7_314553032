@@ -42,6 +42,12 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 3 run 4 - 2.5M | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 2969.790 | >= 2500 | Passed |
 | Task 3 run 4 - 3M | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 3440.120 | >= 2500 | Passed |
 | Task 3 run 4 - best | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_best_v4.pt` | 3,250,000 | 3503.896 | >= 2500 | Passed |
+| Task 3 run 5 - 1M | PPO-Clip + GAE early robust | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 1816.296 | >= 2500 | Not passed |
+| Task 3 run 5 - 1.5M | PPO-Clip + GAE early robust | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1021.052 | >= 2500 | Not passed |
+| Task 3 run 5 - 2M | PPO-Clip + GAE early robust | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1307.263 | >= 2500 | Not passed |
+| Task 3 run 5 - 2.5M | PPO-Clip + GAE early robust | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 2247.786 | >= 2500 | Not passed |
+| Task 3 run 5 - 3M | PPO-Clip + GAE early robust | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2421.599 | >= 2500 | Not passed |
+| Task 3 run 5 - best | PPO-Clip + GAE early robust | `Walker2d-v5` | `LAB7_314553032_task3_best_v5.pt` | 3,250,000 | 3174.461 | >= 2500 | Passed |
 
 ## Task 1: A2C on Pendulum-v1
 
@@ -1921,3 +1927,116 @@ Observed curve differences:
 ### Run 4 Conclusion
 
 Run 4 does not improve the earliest passing fixed checkpoint; it still passes at 2.5M. The best signal for reaching 1M is still run 2's early behavior, especially its 1M score of `2439.417`. The next run should specifically target the weak seeds at 1M instead of increasing late-training exploitation.
+
+### Run 5 Training Settings
+
+Run 5 attempted to keep run 2's early stability while increasing update capacity:
+
+```bash
+python ppo_walker.py \
+  --mode train \
+  --num-episodes 800 \
+  --actor-lr 1e-4 \
+  --critic-lr 3e-4 \
+  --discount-factor 0.99 \
+  --tau 0.95 \
+  --entropy-weight 2e-3 \
+  --value-coef 0.5 \
+  --epsilon 0.1 \
+  --rollout-len 4096 \
+  --update-epoch 6 \
+  --batch-size 256 \
+  --max-grad-norm 0.5 \
+  --hidden-dim 256 \
+  --init-log-std -0.5 \
+  --min-log-std -1.5 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task3_train_latest_v5.pt \
+  --eval-model-path LAB7_314553032_task3_best_v5.pt \
+  --snapshot-steps 1000000,1500000,2000000,2500000,3000000 \
+  --eval-interval 50000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 9 \
+  --wandb-run-name walker-ppo-v5-early-robust
+```
+
+### Run 5 Evaluation Summary
+
+Date recorded: 2026-05-17
+
+| Checkpoint | Training Environment Step | Mean Reward | Target | Status |
+| --- | ---: | ---: | ---: | --- |
+| `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 1816.296 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1021.052 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1307.263 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 2247.786 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2421.599 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_best_v5.pt` | 3,250,000 | 3174.461 | >= 2500 | **Passed** |
+
+### Run 5 Evaluation Command
+
+```bash
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_3m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_best_v5.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+```
+
+### Run 5 Per-Seed Rewards
+
+| Seed | 1M | 1.5M | 2M | 2.5M | 3M | Best v5 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 1227.093 | 987.301 | 1461.184 | 1886.048 | 2252.158 | 3490.829 |
+| 1 | 2572.377 | 991.626 | 1059.243 | 2068.414 | 2719.144 | 2130.730 |
+| 2 | 1000.995 | 1339.335 | 1051.223 | 3024.402 | 2857.867 | 3471.398 |
+| 3 | 1352.880 | 881.921 | 1427.670 | 3394.264 | 3483.887 | 2300.384 |
+| 4 | 1339.779 | 951.130 | 1040.037 | 3006.917 | 2430.225 | 1987.802 |
+| 5 | 2636.655 | 1382.958 | 1421.641 | 1636.339 | 1847.990 | 3520.409 |
+| 6 | 1005.965 | 893.310 | 1235.276 | 1687.496 | 2908.581 | 2813.747 |
+| 7 | 2528.144 | 928.892 | 1299.391 | 2832.741 | 1828.339 | 3537.684 |
+| 8 | 2554.303 | 943.689 | 1447.679 | 1889.794 | 1935.155 | 3407.983 |
+| 9 | 1345.584 | 1277.717 | 1495.184 | 3373.906 | 1995.145 | 3499.605 |
+| 10 | 1219.411 | 1192.554 | 1210.205 | 1832.512 | 1956.788 | 3535.935 |
+| 11 | 1363.010 | 1243.532 | 1532.858 | 1639.485 | 1553.353 | 3476.023 |
+| 12 | 2503.557 | 899.928 | 1427.856 | 1626.127 | 2126.904 | 3533.817 |
+| 13 | 2683.303 | 914.609 | 1428.382 | 1626.538 | 3317.965 | 3506.153 |
+| 14 | 2539.678 | 904.822 | 1387.549 | 1687.989 | 2197.939 | 3423.666 |
+| 15 | 1360.679 | 899.932 | 1193.839 | 1619.440 | 2635.344 | 2033.950 |
+| 16 | 1358.012 | 937.899 | 1294.118 | 3491.029 | 1356.969 | 3498.602 |
+| 17 | 1330.556 | 904.877 | 1171.623 | 1654.573 | 2031.790 | 3431.444 |
+| 18 | 2544.548 | 919.625 | 1097.180 | 2972.134 | 3503.033 | 3418.992 |
+| 19 | 1859.396 | 1025.390 | 1463.118 | 2005.575 | 3493.400 | 3470.063 |
+| Mean | 1816.296 | 1021.052 | 1307.263 | 2247.786 | 2421.599 | 3174.461 |
+
+### Run 5 Standard Check
+
+- Required average reward: `>= 2500`
+- Fixed snapshots do not pass in run 5.
+- Best checkpoint: `LAB7_314553032_task3_best_v5.pt`
+- Best checkpoint mean reward: `3174.461`
+- Best checkpoint training environment step: `3250000`
+- Current conclusion: run 5 is worse than run 4 for fixed-step scoring and should not replace run 4 or run 3.
+
+### Run 5 Curve Comparison
+
+Compared with run 4, run 5 changes:
+
+| Setting | Run 4 early stable | Run 5 early robust | Expected effect |
+| --- | ---: | ---: | --- |
+| Actor LR | 1.2e-4 | 1e-4 | More conservative actor updates |
+| Entropy weight | 2.5e-3 | 2e-3 | Less exploration pressure |
+| Update epoch | 5 | 6 | More optimization on each rollout |
+| Clip epsilon | 0.11 | 0.1 | Tighter clipping |
+
+Observed differences:
+
+- Run 5 is worse at every fixed snapshot than run 4.
+- The extra update epoch did not improve sample efficiency. It appears to over-optimize each rollout and makes the fixed snapshots less robust.
+- Lower entropy did not help early convergence. It likely reduced exploration before the policy had a reliable gait.
+- The best checkpoint still passes, but fixed-step scoring is worse, so run 5 is not useful for the submission goal.
+
+### Run 5 Conclusion
+
+The next direction should return to run 4's settings and avoid `update-epoch=6`. The useful signal from run 4 is that the 1M snapshot had many strong seeds but several weak seeds pulled the average below 2500. The next experiment should try to improve robustness across seeds, not increase optimization per rollout.

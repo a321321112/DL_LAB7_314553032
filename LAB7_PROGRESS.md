@@ -37,6 +37,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Record passing Task 3 result | Current commit | Result review | Recorded stable v2 Task 3 evaluations; `LAB7_314553032_task3_best_v2.pt` passes with 20-seed mean reward `2537.552`. |
 | Done | Record Task 3 faster-early result | Current commit | Result review | Recorded v3 Task 3 evaluations; fixed 2.5M snapshot passes with mean reward `3025.007`, and best v3 reaches `3662.311`. |
 | Done | Record Task 3 early-stable result | Current commit | Result review | Recorded v4 Task 3 evaluations; fixed 2.5M snapshot passes with mean reward `2969.790`, and best v4 reaches `3503.896`. |
+| Done | Record Task 3 early-robust result | Current commit | Result review | Recorded v5 Task 3 evaluations; fixed snapshots do not pass, while best v5 reaches `3174.461`. |
 
 ## Validation Log
 
@@ -78,6 +79,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-16 13:35:00 CST: Recorded Task 3 run 2 stable PPO evaluations. `LAB7_314553032_task3_best_v2.pt` reaches 20-seed mean reward `2537.552` at `1700000` environment steps and passes the Task 3 target.
 - 2026-05-16 14:05:00 CST: Recorded Task 3 run 3 faster-early PPO evaluations. Fixed `2.5M` snapshot reaches mean reward `3025.007`, fixed `3M` snapshot reaches `2643.701`, and `LAB7_314553032_task3_best_v3.pt` reaches `3662.311`.
 - 2026-05-17 00:20:00 CST: Recorded Task 3 run 4 early-stable PPO evaluations. Fixed `2.5M` snapshot reaches mean reward `2969.790`, fixed `3M` snapshot reaches `3440.120`, and `LAB7_314553032_task3_best_v4.pt` reaches `3503.896`.
+- 2026-05-17 01:00:00 CST: Recorded Task 3 run 5 early-robust PPO evaluations. Fixed snapshots did not pass; `LAB7_314553032_task3_best_v5.pt` reaches `3174.461`, but fixed-step results are worse than run 4.
 
 ## Current Task 1 Commands
 
