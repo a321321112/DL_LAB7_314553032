@@ -36,6 +36,12 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 3 run 3 - 2.5M | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 3025.007 | >= 2500 | Passed |
 | Task 3 run 3 - 3M | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 2643.701 | >= 2500 | Passed |
 | Task 3 run 3 - best | PPO-Clip + GAE faster early | `Walker2d-v5` | `LAB7_314553032_task3_best_v3.pt` | 3,250,000 | 3662.311 | >= 2500 | Passed |
+| Task 3 run 4 - 1M | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 2366.176 | >= 2500 | Not passed |
+| Task 3 run 4 - 1.5M | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1567.004 | >= 2500 | Not passed |
+| Task 3 run 4 - 2M | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1263.130 | >= 2500 | Not passed |
+| Task 3 run 4 - 2.5M | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 2969.790 | >= 2500 | Passed |
+| Task 3 run 4 - 3M | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 3440.120 | >= 2500 | Passed |
+| Task 3 run 4 - best | PPO-Clip + GAE early stable | `Walker2d-v5` | `LAB7_314553032_task3_best_v4.pt` | 3,250,000 | 3503.896 | >= 2500 | Passed |
 
 ## Task 1: A2C on Pendulum-v1
 
@@ -1799,3 +1805,119 @@ Observed curve differences:
 ### Run 3 Conclusion
 
 Run 3 passes Task 3 at the 2.5M fixed snapshot and achieves the best overall model so far. For final submission scoring by fixed snapshot, use run 3 snapshots if the goal is at least a 2.5M pass. If the goal is to pass earlier, the next experiment should keep run 2's early stability but add only a small amount of extra early learning speed.
+
+### Run 4 Training Settings
+
+Run 4 moves back toward run 2 stability while keeping a small early-learning boost:
+
+```bash
+python ppo_walker.py \
+  --mode train \
+  --num-episodes 800 \
+  --actor-lr 1.2e-4 \
+  --critic-lr 3e-4 \
+  --discount-factor 0.99 \
+  --tau 0.95 \
+  --entropy-weight 2.5e-3 \
+  --value-coef 0.5 \
+  --epsilon 0.11 \
+  --rollout-len 4096 \
+  --update-epoch 5 \
+  --batch-size 256 \
+  --max-grad-norm 0.5 \
+  --hidden-dim 256 \
+  --init-log-std -0.5 \
+  --min-log-std -1.5 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task3_train_latest_v4.pt \
+  --eval-model-path LAB7_314553032_task3_best_v4.pt \
+  --snapshot-steps 1000000,1500000,2000000,2500000,3000000 \
+  --eval-interval 50000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 9 \
+  --wandb-run-name walker-ppo-v4-early-stable
+```
+
+### Run 4 Evaluation Summary
+
+Date recorded: 2026-05-17
+
+| Checkpoint | Training Environment Step | Mean Reward | Target | Status |
+| --- | ---: | ---: | ---: | --- |
+| `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 2366.176 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1567.004 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1263.130 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 2969.790 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 3440.120 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_best_v4.pt` | 3,250,000 | 3503.896 | >= 2500 | **Passed** |
+
+### Run 4 Evaluation Command
+
+```bash
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_3m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_best_v4.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+```
+
+### Run 4 Per-Seed Rewards
+
+| Seed | 1M | 1.5M | 2M | 2.5M | 3M | Best v4 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 2599.617 | 1419.403 | 1135.089 | 3602.126 | 1997.116 | 3482.639 |
+| 1 | 2558.082 | 1463.808 | 1164.587 | 2957.193 | 3686.575 | 3616.744 |
+| 2 | 2637.632 | 1365.438 | 1444.119 | 3191.416 | 3643.735 | 3620.039 |
+| 3 | 2575.550 | 1950.452 | 1488.574 | 3538.228 | 3637.214 | 3508.346 |
+| 4 | 1582.184 | 2307.900 | 1224.456 | 3469.809 | 3771.648 | 3595.096 |
+| 5 | 2542.571 | 1274.877 | 1582.675 | 3325.695 | 3669.482 | 3760.473 |
+| 6 | 2731.230 | 1278.741 | 1339.293 | 3063.712 | 3646.020 | 3563.269 |
+| 7 | 2472.504 | 1282.928 | 1152.324 | 3126.359 | 3430.726 | 3689.960 |
+| 8 | 2624.315 | 1281.910 | 1182.664 | 3314.424 | 3656.461 | 3719.312 |
+| 9 | 2042.065 | 1351.066 | 1434.399 | 3473.775 | 3675.491 | 3783.621 |
+| 10 | 1552.392 | 2311.893 | 1346.496 | 3311.533 | 3635.292 | 3543.247 |
+| 11 | 2644.361 | 1462.515 | 1170.436 | 2383.118 | 3583.433 | 3575.370 |
+| 12 | 2511.037 | 1813.731 | 1105.560 | 1641.558 | 3653.603 | 3589.753 |
+| 13 | 2496.513 | 2042.563 | 1013.844 | 2853.162 | 3591.735 | 3563.096 |
+| 14 | 2301.111 | 1460.139 | 1093.376 | 2573.005 | 3656.436 | 3725.068 |
+| 15 | 2490.780 | 1285.000 | 1198.711 | 3410.715 | 3259.933 | 2576.486 |
+| 16 | 2571.137 | 1268.973 | 1059.880 | 2776.778 | 1466.987 | 3661.065 |
+| 17 | 1743.404 | 1327.680 | 1317.085 | 2304.705 | 3757.391 | 3647.072 |
+| 18 | 2611.570 | 1753.594 | 1543.688 | 3457.303 | 3673.704 | 2346.649 |
+| 19 | 2035.471 | 1637.467 | 1265.338 | 1621.190 | 3709.410 | 3510.609 |
+| Mean | 2366.176 | 1567.004 | 1263.130 | 2969.790 | 3440.120 | 3503.896 |
+
+### Run 4 Standard Check
+
+- Required average reward: `>= 2500`
+- Earliest passing fixed snapshot: `LAB7_314553032_task3_ppo_2p5m.pt`
+- Earliest passing fixed snapshot mean reward: `2969.790`
+- Earliest passing fixed snapshot training environment step: `2502656`
+- Best checkpoint: `LAB7_314553032_task3_best_v4.pt`
+- Best checkpoint mean reward: `3503.896`
+- Best checkpoint training environment step: `3250000`
+- Current conclusion: run 4 also passes at 2.5M, but does not improve the earliest passing step relative to run 3.
+
+### Run 4 Curve Comparison
+
+Compared with run 3, run 4 is slightly more conservative:
+
+| Setting | Run 3 faster early | Run 4 early stable | Expected effect |
+| --- | ---: | ---: | --- |
+| Actor LR | 1.5e-4 | 1.2e-4 | Less aggressive policy movement |
+| Clip epsilon | 0.12 | 0.11 | Slightly tighter PPO update |
+| Entropy weight | 3e-3 | 2.5e-3 | Slightly less exploration pressure |
+| Eval interval | 50000 | 50000 | Same checkpoint selection frequency |
+| Min log std | -1.5 | -1.5 | Same stochasticity floor |
+
+Observed curve differences:
+
+- Run 4 keeps entropy and `action/log_std` between run 2 and run 3. It is less aggressive than run 3 but more aggressive than run 2.
+- The 1M fixed snapshot improves over run 3 (`2366.176` vs. `1351.505`) but is still below run 2's `2439.417` and below the `2500` target.
+- Run 4 still has a mid-training collapse at 1.5M to 2M before recovering strongly by 2.5M. This suggests the policy finds a useful gait early, loses it during later updates, and then relearns a stronger gait.
+- Run 4 3M and best checkpoints are strong (`3440.120`, `3503.896`), but best v3 remains the best overall model so far (`3662.311`).
+
+### Run 4 Conclusion
+
+Run 4 does not improve the earliest passing fixed checkpoint; it still passes at 2.5M. The best signal for reaching 1M is still run 2's early behavior, especially its 1M score of `2439.417`. The next run should specifically target the weak seeds at 1M instead of increasing late-training exploitation.
