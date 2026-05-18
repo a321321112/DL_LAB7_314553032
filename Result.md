@@ -60,6 +60,12 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 3 run 7 - 2.5M | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 3649.007 | >= 2500 | Passed |
 | Task 3 run 7 - 3M | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 3568.163 | >= 2500 | Passed |
 | Task 3 run 7 - best | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_best_v7.pt` | 3,150,000 | 4003.744 | >= 2500 | Passed |
+| Task 3 run 8 - 1M | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1m.pt` | 1,001,472 | 1405.084 | >= 2500 | Not passed |
+| Task 3 run 8 - 1.5M | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1p5m.pt` | 1,501,184 | 3400.151 | >= 2500 | Passed |
+| Task 3 run 8 - 2M | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2m.pt` | 2,000,896 | 3683.006 | >= 2500 | Passed |
+| Task 3 run 8 - 2.5M | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,500,608 | 3720.946 | >= 2500 | Passed |
+| Task 3 run 8 - 3M | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,000,320 | 3797.256 | >= 2500 | Passed |
+| Task 3 run 8 - best | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_best_v8.pt` | 3,150,000 | 3919.465 | >= 2500 | Passed |
 
 ## Task 1: A2C on Pendulum-v1
 
@@ -2262,3 +2268,108 @@ Compared with run 6 and run 4:
 ### Run 7 Conclusion
 
 For the next run, avoid making the policy even more deterministic. The better direction is to return to run 6 or run 4's exploration level, then increase update frequency before 1M with shorter rollouts. This should give the policy more chances to improve early without reducing exploration too aggressively.
+
+### Run 8 Training Settings
+
+Run 8 keeps run 6's exploration level but shortens rollout length from `4096` to `2048`, so PPO updates happen more frequently before 1M environment steps:
+
+```bash
+python ppo_walker.py \
+  --mode train \
+  --num-episodes 1600 \
+  --actor-lr 1.2e-4 \
+  --critic-lr 2e-4 \
+  --discount-factor 0.99 \
+  --tau 0.95 \
+  --entropy-weight 3e-3 \
+  --value-coef 0.5 \
+  --epsilon 0.11 \
+  --rollout-len 2048 \
+  --update-epoch 5 \
+  --batch-size 128 \
+  --max-grad-norm 0.5 \
+  --hidden-dim 256 \
+  --init-log-std -0.45 \
+  --min-log-std -1.5 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task3_train_latest_v8.pt \
+  --eval-model-path LAB7_314553032_task3_best_v8.pt \
+  --snapshot-steps 1000000,1500000,2000000,2500000,3000000 \
+  --eval-interval 50000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 9 \
+  --wandb-run-name walker-ppo-v8-frequent-updates
+```
+
+### Run 8 Evaluation Summary
+
+Date recorded: 2026-05-18
+
+| Checkpoint | Training Environment Step | Mean Reward | Target | Status |
+| --- | ---: | ---: | ---: | --- |
+| `LAB7_314553032_task3_ppo_1m.pt` | 1,001,472 | 1405.084 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_1p5m.pt` | 1,501,184 | 3400.151 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_ppo_2m.pt` | 2,000,896 | 3683.006 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_ppo_2p5m.pt` | 2,500,608 | 3720.946 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_ppo_3m.pt` | 3,000,320 | 3797.256 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_best_v8.pt` | 3,150,000 | 3919.465 | >= 2500 | **Passed** |
+
+### Run 8 Evaluation Command
+
+```bash
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_3m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_best_v8.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+```
+
+### Run 8 Per-Seed Rewards
+
+| Seed | 1M | 1.5M | 2M | 2.5M | 3M | Best v8 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 1433.230 | 3416.785 | 3640.957 | 3708.772 | 3819.463 | 3918.799 |
+| 1 | 765.675 | 3415.642 | 3666.306 | 3702.073 | 3798.044 | 3908.428 |
+| 2 | 2761.167 | 3411.524 | 3692.397 | 3739.075 | 3812.241 | 3967.947 |
+| 3 | 2662.028 | 3414.658 | 3707.168 | 3742.936 | 3793.765 | 3944.065 |
+| 4 | 1074.228 | 3405.633 | 3670.631 | 3689.066 | 3806.799 | 3903.636 |
+| 5 | 886.953 | 3431.183 | 3681.507 | 3737.969 | 3801.070 | 3918.179 |
+| 6 | 859.848 | 3395.681 | 3673.329 | 3710.403 | 3786.336 | 3938.886 |
+| 7 | 728.682 | 3471.788 | 3695.124 | 3732.125 | 3781.343 | 3915.191 |
+| 8 | 2112.251 | 3429.633 | 3676.486 | 3754.718 | 3778.105 | 3904.690 |
+| 9 | 2675.884 | 3397.626 | 3690.912 | 3733.246 | 3811.165 | 3920.585 |
+| 10 | 876.665 | 3403.630 | 3684.343 | 3723.984 | 3823.921 | 3905.198 |
+| 11 | 1196.205 | 3367.428 | 3692.061 | 3715.786 | 3807.056 | 3933.417 |
+| 12 | 892.790 | 3300.890 | 3702.005 | 3687.163 | 3780.475 | 3892.822 |
+| 13 | 890.653 | 3405.256 | 3695.082 | 3719.864 | 3802.926 | 3933.047 |
+| 14 | 1371.601 | 3387.809 | 3698.811 | 3724.667 | 3806.287 | 3926.537 |
+| 15 | 876.257 | 3445.336 | 3663.107 | 3708.280 | 3786.883 | 3888.759 |
+| 16 | 885.844 | 3328.410 | 3689.149 | 3736.022 | 3773.501 | 3933.511 |
+| 17 | 2721.980 | 3402.536 | 3691.305 | 3718.890 | 3792.772 | 3883.670 |
+| 18 | 864.602 | 3354.383 | 3677.031 | 3705.706 | 3772.243 | 3913.807 |
+| 19 | 1565.143 | 3417.192 | 3672.403 | 3728.178 | 3810.716 | 3938.136 |
+| Mean | 1405.084 | 3400.151 | 3683.006 | 3720.946 | 3797.256 | 3919.465 |
+
+### Run 8 Standard Check
+
+- Required average reward: `>= 2500`
+- Earliest passing fixed snapshot: `LAB7_314553032_task3_ppo_1p5m.pt`
+- Earliest passing fixed snapshot mean reward: `3400.151`
+- Best checkpoint: `LAB7_314553032_task3_best_v8.pt`
+- Best checkpoint mean reward: `3919.465`
+- Current conclusion: run 8 is the best run for fixed-snapshot sample efficiency so far. It moves the earliest passing fixed snapshot from 2.5M to 1.5M.
+
+### Run 8 Curve Comparison
+
+Compared with run 7 and run 6:
+
+- Frequent updates are effective. The policy becomes consistently strong by the 1.5M snapshot and stays above `3600` from 2M onward.
+- The 1M checkpoint is still not stable. Seeds `2`, `3`, `9`, and `17` already pass at 1M, but many seeds remain below `1000`, so the 1M result is a mixed-policy phase rather than a fully learned gait.
+- `entropy` decays much faster than run 6 and run 7, and `clip_fraction` rises higher late in training. This means the shorter rollout setup makes policy updates more active, but also more aggressive.
+- `critic loss` becomes larger than previous runs after the policy improves. The value function is under heavier pressure because returns change quickly once the gait is found.
+- The best checkpoint is slightly lower than run 7's `4003.744`, but fixed snapshots are much better and more useful for the assignment.
+
+### Run 8 Conclusion
+
+Run 8 confirms that shorter rollouts are the right direction for earlier success. The next experiment should keep `rollout-len=2048`, but reduce late update pressure while encouraging earlier gait discovery. The target is to make the 1M snapshot resemble run 8's 1.5M snapshot.
