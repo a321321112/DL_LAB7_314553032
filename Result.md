@@ -54,6 +54,12 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 3 run 6 - 2.5M | PPO-Clip + GAE v4 plus exploration | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 2761.016 | >= 2500 | Passed |
 | Task 3 run 6 - 3M | PPO-Clip + GAE v4 plus exploration | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 3369.157 | >= 2500 | Passed |
 | Task 3 run 6 - best | PPO-Clip + GAE v4 plus exploration | `Walker2d-v5` | `LAB7_314553032_task3_best_v6.pt` | 3,200,000 | 3465.944 | >= 2500 | Passed |
+| Task 3 run 7 - 1M | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 977.724 | >= 2500 | Not passed |
+| Task 3 run 7 - 1.5M | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1415.253 | >= 2500 | Not passed |
+| Task 3 run 7 - 2M | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1429.384 | >= 2500 | Not passed |
+| Task 3 run 7 - 2.5M | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 3649.007 | >= 2500 | Passed |
+| Task 3 run 7 - 3M | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 3568.163 | >= 2500 | Passed |
+| Task 3 run 7 - best | PPO-Clip + GAE early exploit | `Walker2d-v5` | `LAB7_314553032_task3_best_v7.pt` | 3,150,000 | 4003.744 | >= 2500 | Passed |
 
 ## Task 1: A2C on Pendulum-v1
 
@@ -2151,3 +2157,108 @@ Compared with run 4 and run 5:
 ### Run 6 Conclusion
 
 Run 6 did not improve fixed-step scoring, but it revealed a useful direction: reduce early variance first, then slightly increase early exploitation. The next run should preserve run 6's stability while making the policy a bit more deterministic and slightly faster before 1M.
+
+### Run 7 Training Settings
+
+Run 7 tests a more exploitative version of run 6 by slightly increasing actor learning rate, lowering entropy, and starting with a slightly smaller action standard deviation:
+
+```bash
+python ppo_walker.py \
+  --mode train \
+  --num-episodes 800 \
+  --actor-lr 1.3e-4 \
+  --critic-lr 2e-4 \
+  --discount-factor 0.99 \
+  --tau 0.95 \
+  --entropy-weight 2.7e-3 \
+  --value-coef 0.5 \
+  --epsilon 0.11 \
+  --rollout-len 4096 \
+  --update-epoch 5 \
+  --batch-size 256 \
+  --max-grad-norm 0.5 \
+  --hidden-dim 256 \
+  --init-log-std -0.48 \
+  --min-log-std -1.5 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task3_train_latest_v7.pt \
+  --eval-model-path LAB7_314553032_task3_best_v7.pt \
+  --snapshot-steps 1000000,1500000,2000000,2500000,3000000 \
+  --eval-interval 50000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 9 \
+  --wandb-run-name walker-ppo-v7-early-exploit
+```
+
+### Run 7 Evaluation Summary
+
+Date recorded: 2026-05-18
+
+| Checkpoint | Training Environment Step | Mean Reward | Target | Status |
+| --- | ---: | ---: | ---: | --- |
+| `LAB7_314553032_task3_ppo_1m.pt` | 1,003,520 | 977.724 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_1p5m.pt` | 1,503,232 | 1415.253 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2m.pt` | 2,002,944 | 1429.384 | >= 2500 | Not passed |
+| `LAB7_314553032_task3_ppo_2p5m.pt` | 2,502,656 | 3649.007 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_ppo_3m.pt` | 3,002,368 | 3568.163 | >= 2500 | **Passed** |
+| `LAB7_314553032_task3_best_v7.pt` | 3,150,000 | 4003.744 | >= 2500 | **Passed** |
+
+### Run 7 Evaluation Command
+
+```bash
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_3m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_best_v7.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+```
+
+### Run 7 Per-Seed Rewards
+
+| Seed | 1M | 1.5M | 2M | 2.5M | 3M | Best v7 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 840.606 | 1316.437 | 1392.964 | 3770.058 | 3719.368 | 4018.626 |
+| 1 | 820.885 | 1457.730 | 1450.862 | 3757.691 | 3792.520 | 3989.805 |
+| 2 | 839.408 | 1397.670 | 1396.456 | 3728.371 | 3800.661 | 3897.228 |
+| 3 | 1339.764 | 1333.715 | 1367.227 | 3759.471 | 3922.451 | 4023.272 |
+| 4 | 855.405 | 1327.932 | 1549.782 | 3747.464 | 1908.808 | 4009.369 |
+| 5 | 848.460 | 1522.778 | 1378.886 | 3755.072 | 3845.283 | 4003.246 |
+| 6 | 1038.884 | 1406.431 | 1361.926 | 3815.469 | 3760.320 | 4024.664 |
+| 7 | 856.999 | 1465.676 | 1447.100 | 3726.140 | 3891.354 | 4003.795 |
+| 8 | 1237.625 | 1346.848 | 1585.201 | 3583.563 | 3822.959 | 3995.022 |
+| 9 | 855.367 | 1426.223 | 1453.879 | 3540.294 | 3775.837 | 4017.733 |
+| 10 | 835.407 | 1276.742 | 1315.311 | 3588.901 | 3916.838 | 4016.839 |
+| 11 | 1031.557 | 1416.812 | 1415.034 | 3776.066 | 3911.495 | 4016.990 |
+| 12 | 863.134 | 1532.857 | 1383.498 | 3772.645 | 3755.088 | 3992.076 |
+| 13 | 849.011 | 1477.708 | 1375.950 | 3760.039 | 3812.345 | 4010.916 |
+| 14 | 835.547 | 1349.742 | 1398.901 | 3567.149 | 3680.131 | 4018.017 |
+| 15 | 1228.572 | 1400.017 | 1380.361 | 3804.830 | 2883.067 | 3995.517 |
+| 16 | 826.799 | 1501.368 | 1490.629 | 3720.273 | 3721.257 | 4011.857 |
+| 17 | 1445.737 | 1352.700 | 1494.927 | 3768.642 | 3819.002 | 4023.864 |
+| 18 | 877.787 | 1506.846 | 1425.394 | 2397.425 | 3716.245 | 4005.089 |
+| 19 | 1227.518 | 1488.830 | 1523.404 | 3640.575 | 1908.224 | 4000.960 |
+| Mean | 977.724 | 1415.253 | 1429.384 | 3649.007 | 3568.163 | 4003.744 |
+
+### Run 7 Standard Check
+
+- Required average reward: `>= 2500`
+- Earliest passing fixed snapshot: `LAB7_314553032_task3_ppo_2p5m.pt`
+- Earliest passing fixed snapshot mean reward: `3649.007`
+- Best checkpoint: `LAB7_314553032_task3_best_v7.pt`
+- Best checkpoint mean reward: `4003.744`
+- Current conclusion: run 7 has the strongest final checkpoint so far, but it is worse for early fixed-snapshot scoring.
+
+### Run 7 Curve Comparison
+
+Compared with run 6 and run 4:
+
+- Run 7 reaches the best final policy quality so far. The best checkpoint is extremely consistent across seeds, with nearly all seeds around `4000`.
+- Early fixed snapshots are much worse than run 4 and run 6. The 1M checkpoint falls to `977.724`, while run 4 was `2366.176` and run 6 was `2231.630`.
+- The lower entropy weight, slightly higher actor learning rate, and smaller initial action standard deviation made the policy more exploitative. That helped after a useful gait was discovered, but hurt early exploration.
+- The curve suggests the agent stayed in a lower-quality gait or standing behavior for too long, then switched into a strong walking policy later.
+- This run is useful for final-score potential, but not for the goal of passing earlier than 2.5M.
+
+### Run 7 Conclusion
+
+For the next run, avoid making the policy even more deterministic. The better direction is to return to run 6 or run 4's exploration level, then increase update frequency before 1M with shorter rollouts. This should give the policy more chances to improve early without reducing exploration too aggressively.
