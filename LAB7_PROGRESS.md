@@ -42,6 +42,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Record Task 3 early-exploit result | Current commit | Result review | Recorded v7 Task 3 evaluations; best v7 reaches `4003.744`, but early fixed snapshots regress while 2.5M and 3M pass. |
 | Done | Record Task 3 frequent-updates result | Current commit | Result review | Recorded v8 Task 3 evaluations; fixed 1.5M snapshot reaches `3400.151`, moving the earliest fixed-snapshot pass earlier than previous runs. |
 | Done | Record Task 3 earlier-discovery result | Current commit | Result review | Recorded complete v9 Task 3 evaluations; 1M improves to `1808.769` and 1.5M passes at `2517.718`, but run 8 remains the stronger submission candidate. |
+| Done | Record Task 3 balanced-early result | Current commit | Result review | Recorded v10 Task 3 evaluations; fixed 1M snapshot passes at `2603.904`, and best v10 reaches `4079.485`. |
 
 ## Validation Log
 
@@ -88,6 +89,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-18 00:00:00 CST: Recorded Task 3 run 7 early-exploit PPO evaluations. Fixed `2.5M` and `3M` snapshots pass with `3649.007` and `3568.163`; `LAB7_314553032_task3_best_v7.pt` reaches `4003.744`, but fixed `1M` regresses to `977.724`.
 - 2026-05-18 00:30:00 CST: Recorded Task 3 run 8 frequent-update PPO evaluations. Fixed `1.5M` snapshot reaches mean reward `3400.151`, fixed `2M` reaches `3683.006`, and `LAB7_314553032_task3_best_v8.pt` reaches `3919.465`.
 - 2026-05-19 00:00:00 CST: Recorded complete Task 3 run 9 earlier-discovery PPO evaluations. Fixed `1M` improves to `1808.769`, fixed `1.5M` passes at `2517.718`, fixed `2M` reaches `3264.254`, fixed `3M` is `3583.417`, and `LAB7_314553032_task3_best_v9.pt` reaches `3784.047`.
+- 2026-05-19 00:30:00 CST: Recorded Task 3 run 10 balanced-early PPO evaluations. Fixed `1M` snapshot passes with mean reward `2603.904`, fixed `3M` reaches `3991.904`, and `LAB7_314553032_task3_best_v10.pt` reaches `4079.485`.
 
 ## Current Task 1 Commands
 
