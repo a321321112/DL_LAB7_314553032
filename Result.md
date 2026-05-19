@@ -66,6 +66,10 @@ This document records evaluation results for Task 1 to Task 3. Each result shoul
 | Task 3 run 8 - 2.5M | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,500,608 | 3720.946 | >= 2500 | Passed |
 | Task 3 run 8 - 3M | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,000,320 | 3797.256 | >= 2500 | Passed |
 | Task 3 run 8 - best | PPO-Clip + GAE frequent updates | `Walker2d-v5` | `LAB7_314553032_task3_best_v8.pt` | 3,150,000 | 3919.465 | >= 2500 | Passed |
+| Task 3 run 9 - 1M | PPO-Clip + GAE earlier discovery | `Walker2d-v5` | `LAB7_314553032_task3_ppo_1m.pt` | 1,001,472 | 1808.769 | >= 2500 | Not passed |
+| Task 3 run 9 - 2.5M | PPO-Clip + GAE earlier discovery | `Walker2d-v5` | `LAB7_314553032_task3_ppo_2p5m.pt` | 2,500,608 | 3313.585 | >= 2500 | Passed |
+| Task 3 run 9 - 3M | PPO-Clip + GAE earlier discovery | `Walker2d-v5` | `LAB7_314553032_task3_ppo_3m.pt` | 3,000,320 | 3583.417 | >= 2500 | Passed |
+| Task 3 run 9 - best | PPO-Clip + GAE earlier discovery | `Walker2d-v5` | `LAB7_314553032_task3_best_v9.pt` | 3,250,000 | 3784.047 | >= 2500 | Passed |
 
 ## Task 1: A2C on Pendulum-v1
 
@@ -2373,3 +2377,126 @@ Compared with run 7 and run 6:
 ### Run 8 Conclusion
 
 Run 8 confirms that shorter rollouts are the right direction for earlier success. The next experiment should keep `rollout-len=2048`, but reduce late update pressure while encouraging earlier gait discovery. The target is to make the 1M snapshot resemble run 8's 1.5M snapshot.
+
+### Run 9 Training Settings
+
+Run 9 follows run 8 and increases early exploration slightly while improving critic learning speed:
+
+```bash
+python ppo_walker.py \
+  --mode train \
+  --num-episodes 1600 \
+  --actor-lr 1.25e-4 \
+  --critic-lr 2.5e-4 \
+  --discount-factor 0.99 \
+  --tau 0.95 \
+  --entropy-weight 3.5e-3 \
+  --value-coef 0.5 \
+  --epsilon 0.11 \
+  --rollout-len 2048 \
+  --update-epoch 5 \
+  --batch-size 128 \
+  --max-grad-norm 0.5 \
+  --hidden-dim 256 \
+  --init-log-std -0.42 \
+  --min-log-std -1.4 \
+  --max-log-std 0.5 \
+  --model-path LAB7_314553032_task3_train_latest_v9.pt \
+  --eval-model-path LAB7_314553032_task3_best_v9.pt \
+  --snapshot-steps 1000000,1500000,2000000,2500000,3000000 \
+  --eval-interval 50000 \
+  --eval-seed-start 0 \
+  --eval-seed-end 9 \
+  --wandb-run-name walker-ppo-v9-earlier-discovery
+```
+
+### Run 9 Evaluation Summary
+
+Date recorded: 2026-05-19
+
+The pasted terminal log is incomplete for the middle checkpoints. The complete available results are recorded below; the full 1.5M and 2M outputs should be rerun if exact report-grade per-seed records are needed.
+
+| Checkpoint | Training Environment Step | Mean Reward | Target | Status | Notes |
+| --- | ---: | ---: | ---: | --- | --- |
+| `LAB7_314553032_task3_ppo_1m.pt` | 1,001,472 | 1808.769 | >= 2500 | Not passed | Complete per-seed output available. |
+| `LAB7_314553032_task3_ppo_1p5m.pt` | Not captured | Not captured | >= 2500 | Not recorded | Terminal paste is truncated. |
+| `LAB7_314553032_task3_ppo_2m.pt` | Not captured | Not captured | >= 2500 | Not recorded | Terminal paste is truncated. |
+| `LAB7_314553032_task3_ppo_2p5m.pt` | 2,500,608 | 3313.585 | >= 2500 | **Passed** | Mean and step are visible, but per-seed output is incomplete. |
+| `LAB7_314553032_task3_ppo_3m.pt` | 3,000,320 | 3583.417 | >= 2500 | **Passed** | Complete per-seed output available. |
+| `LAB7_314553032_task3_best_v9.pt` | 3,250,000 | 3784.047 | >= 2500 | **Passed** | Complete per-seed output available. |
+
+### Run 9 Evaluation Command
+
+```bash
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_1p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_2p5m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_ppo_3m.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python ppo_walker.py --mode eval --model-path LAB7_314553032_task3_best_v9.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+```
+
+### Run 9 Per-Seed Rewards
+
+| Seed | 1M | 3M | Best v9 |
+| ---: | ---: | ---: | ---: |
+| 0 | 1777.388 | 3531.386 | 3777.384 |
+| 1 | 2016.453 | 3679.971 | 3766.245 |
+| 2 | 2609.806 | 3551.061 | 3816.082 |
+| 3 | 2533.471 | 3541.047 | 3784.224 |
+| 4 | 1618.128 | 3578.278 | 3798.623 |
+| 5 | 1982.731 | 3597.153 | 3802.832 |
+| 6 | 2576.679 | 3568.036 | 3800.410 |
+| 7 | 2563.874 | 3571.163 | 3799.312 |
+| 8 | 1648.643 | 3582.076 | 3786.018 |
+| 9 | 1164.872 | 3609.886 | 3798.111 |
+| 10 | 898.976 | 3631.750 | 3789.540 |
+| 11 | 2697.727 | 3567.673 | 3756.570 |
+| 12 | 1606.464 | 3584.175 | 3804.193 |
+| 13 | 1588.038 | 3590.927 | 3758.836 |
+| 14 | 2630.518 | 3540.112 | 3778.605 |
+| 15 | 597.808 | 3570.631 | 3782.624 |
+| 16 | 632.930 | 3571.506 | 3766.825 |
+| 17 | 2060.981 | 3615.437 | 3766.382 |
+| 18 | 615.016 | 3626.683 | 3776.648 |
+| 19 | 2354.882 | 3559.382 | 3771.487 |
+| Mean | 1808.769 | 3583.417 | 3784.047 |
+
+Partial pasted values before the visible `2.5M` mean:
+
+| Seed | Partial pasted rewards |
+| ---: | ---: |
+| 0 | 2906.077 |
+| 1 | 3097.174 |
+| 2 | 1502.706 |
+| 3 | 1116.467 |
+| 4 | 1554.541 |
+| 5 | 1058.563 |
+| 6 | 2918.737 |
+| 7 | 2996.470 |
+| 8 | 1458.395 |
+| 9 | 1746.472 |
+| 10 | 3060.611 |
+
+### Run 9 Standard Check
+
+- Required average reward: `>= 2500`
+- Earliest confirmed passing fixed snapshot from available log: `LAB7_314553032_task3_ppo_2p5m.pt`
+- Confirmed 2.5M mean reward: `3313.585`
+- Best checkpoint: `LAB7_314553032_task3_best_v9.pt`
+- Best checkpoint mean reward: `3784.047`
+- Current conclusion: run 9 improves 1M over run 8 (`1808.769` vs `1405.084`) but does not beat run 8 at 1.5M, 2M, 3M, or best based on available complete results.
+
+### Run 9 Curve Comparison
+
+Compared with run 8:
+
+- Run 9 has a better 1M mean and more seeds near or above the target, so the added exploration helped early discovery.
+- It still has several severe 1M failures, especially seeds `15`, `16`, and `18`, which keep the 1M average far below `2500`.
+- Later performance is slightly lower than run 8. The higher entropy and higher critic LR appear to delay convergence or reduce late policy sharpness.
+- The curve is very close to run 8, so the main mechanism remains the frequent-update setup rather than the v9 parameter changes.
+- Because run 8 already passes at 1.5M with `3400.151`, run 9 is not a better submission candidate unless a complete rerun shows a stronger 1.5M/2M result.
+
+### Run 9 Conclusion
+
+The next run should use run 8 as the base, keep the frequent-update setup, and add only a small early-discovery push. Run 9's larger exploration increase helped 1M but damaged later quality, so the next adjustment should be smaller.
