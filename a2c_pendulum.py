@@ -115,8 +115,11 @@ class A2CAgent:
         self.critic_lr = args.critic_lr
         self.num_episodes = args.num_episodes
         self.n_step = int(getattr(args, "n_step", 5))
+        raw_update_batch_size = int(getattr(args, "update_batch_size", 0))
+        self.update_batch_size = raw_update_batch_size if raw_update_batch_size > 0 else self.n_step
         self.reward_scale = float(getattr(args, "reward_scale", 10.0))
         self.normalize_advantage = not bool(getattr(args, "disable_advantage_norm", False))
+        self.max_grad_norm = float(getattr(args, "max_grad_norm", 0.0))
         self.init_log_std = float(getattr(args, "init_log_std", 0.0))
         self.min_log_std = float(getattr(args, "min_log_std", -5.0))
         self.max_log_std = float(getattr(args, "max_log_std", 2.0))
@@ -138,8 +141,12 @@ class A2CAgent:
         self.loaded_training_step = 0
         if self.n_step < 1:
             raise ValueError("--n-step must be at least 1")
+        if self.update_batch_size < 1:
+            raise ValueError("--update-batch-size must be at least 1")
         if self.reward_scale <= 0:
             raise ValueError("--reward-scale must be greater than 0")
+        if self.max_grad_norm < 0:
+            raise ValueError("--max-grad-norm must be non-negative")
         if self.min_log_std > self.max_log_std:
             raise ValueError("--min-log-std must be less than or equal to --max-log-std")
         if not self.min_log_std <= self.init_log_std <= self.max_log_std:
@@ -304,21 +311,28 @@ class A2CAgent:
         entropies = torch.stack([transition[2] for transition in self.rollout])
         rewards = [float(transition[4]) / self.reward_scale for transition in self.rollout]
         dones = [bool(transition[5]) for transition in self.rollout]
-        last_next_state = torch.FloatTensor(self.rollout[-1][3]).to(self.device)
-        last_done = dones[-1]
 
         with torch.no_grad():
-            running_return = torch.tensor(0.0, device=self.device)
-            if not last_done:
-                running_return = self.critic(last_next_state).squeeze(-1)
+            if self.n_step == 1:
+                next_states = torch.FloatTensor(np.stack([transition[3] for transition in self.rollout])).to(self.device)
+                reward_tensor = torch.tensor(rewards, dtype=torch.float32, device=self.device)
+                masks = torch.tensor([0.0 if done else 1.0 for done in dones], dtype=torch.float32, device=self.device)
+                next_values = self.critic(next_states).squeeze(-1)
+                returns = reward_tensor + self.gamma * next_values * masks
+            else:
+                last_next_state = torch.FloatTensor(self.rollout[-1][3]).to(self.device)
+                last_done = dones[-1]
+                running_return = torch.tensor(0.0, device=self.device)
+                if not last_done:
+                    running_return = self.critic(last_next_state).squeeze(-1)
 
-            returns = []
-            for reward, done in zip(reversed(rewards), reversed(dones)):
-                if done:
-                    running_return = torch.tensor(0.0, device=self.device)
-                running_return = torch.tensor(reward, dtype=torch.float32, device=self.device) + self.gamma * running_return
-                returns.insert(0, running_return)
-            returns = torch.stack(returns)
+                returns = []
+                for reward, done in zip(reversed(rewards), reversed(dones)):
+                    if done:
+                        running_return = torch.tensor(0.0, device=self.device)
+                    running_return = torch.tensor(reward, dtype=torch.float32, device=self.device) + self.gamma * running_return
+                    returns.insert(0, running_return)
+                returns = torch.stack(returns)
 
         values = self.critic(states).squeeze(-1)
         advantages = returns - values
@@ -334,11 +348,15 @@ class A2CAgent:
         # update value
         self.critic_optimizer.zero_grad()
         value_loss.backward()
+        if self.max_grad_norm > 0:
+            nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
         self.critic_optimizer.step()
 
         # update policy
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
+        if self.max_grad_norm > 0:
+            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
         self.actor_optimizer.step()
         with torch.no_grad():
             self.actor.log_std.clamp_(self.actor.min_log_std, self.actor.max_log_std)
@@ -366,7 +384,8 @@ class A2CAgent:
 
                 self.rollout.append(self.transition)
                 actor_loss, critic_loss = None, None
-                if len(self.rollout) >= self.n_step or done:
+                update_threshold = self.update_batch_size if self.n_step == 1 else self.n_step
+                if len(self.rollout) >= update_threshold or done:
                     actor_loss, critic_loss = self.update_model()
                     self.rollout = []
                     actor_losses.append(actor_loss)
@@ -418,6 +437,7 @@ class A2CAgent:
                         "actor loss": actor_loss,
                         "critic loss": critic_loss,
                         "n_step": self.n_step,
+                        "update_batch_size": self.update_batch_size,
                         "reward_scale": self.reward_scale,
                         "action/log_std": self.actor.log_std.detach().mean().item(),
                         "action/clamped_log_std": self.actor.log_std.detach().clamp(
@@ -497,8 +517,10 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=77)
     parser.add_argument("--entropy-weight", type=float, default=1e-2) # entropy can be disabled by setting this to 0
     parser.add_argument("--n-step", type=int, default=5)
+    parser.add_argument("--update-batch-size", type=int, default=0)
     parser.add_argument("--reward-scale", type=float, default=10.0)
     parser.add_argument("--disable-advantage-norm", action="store_true")
+    parser.add_argument("--max-grad-norm", type=float, default=0.0)
     parser.add_argument("--init-log-std", type=float, default=0.0)
     parser.add_argument("--min-log-std", type=float, default=-5.0)
     parser.add_argument("--max-log-std", type=float, default=2.0)

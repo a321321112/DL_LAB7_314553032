@@ -43,6 +43,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 | Done | Record Task 3 frequent-updates result | Current commit | Result review | Recorded v8 Task 3 evaluations; fixed 1.5M snapshot reaches `3400.151`, moving the earliest fixed-snapshot pass earlier than previous runs. |
 | Done | Record Task 3 earlier-discovery result | Current commit | Result review | Recorded complete v9 Task 3 evaluations; 1M improves to `1808.769` and 1.5M passes at `2517.718`, but run 8 remains the stronger submission candidate. |
 | Done | Record Task 3 balanced-early result | Current commit | Result review | Recorded v10 Task 3 evaluations; fixed 1M snapshot passes at `2603.904`, and best v10 reaches `4079.485`. |
+| Done | Add batched 1-step A2C update | Current commit | `python3 -m py_compile a2c_pendulum.py` passed | Added `--update-batch-size` and `--max-grad-norm` so Task 1 can keep a 1-step TD target while reducing policy-gradient variance through batch updates. |
 
 ## Validation Log
 
@@ -90,6 +91,7 @@ This file tracks implementation progress for Lab 7. Each completed functional un
 - 2026-05-18 00:30:00 CST: Recorded Task 3 run 8 frequent-update PPO evaluations. Fixed `1.5M` snapshot reaches mean reward `3400.151`, fixed `2M` reaches `3683.006`, and `LAB7_314553032_task3_best_v8.pt` reaches `3919.465`.
 - 2026-05-19 00:00:00 CST: Recorded complete Task 3 run 9 earlier-discovery PPO evaluations. Fixed `1M` improves to `1808.769`, fixed `1.5M` passes at `2517.718`, fixed `2M` reaches `3264.254`, fixed `3M` is `3583.417`, and `LAB7_314553032_task3_best_v9.pt` reaches `3784.047`.
 - 2026-05-19 00:30:00 CST: Recorded Task 3 run 10 balanced-early PPO evaluations. Fixed `1M` snapshot passes with mean reward `2603.904`, fixed `3M` reaches `3991.904`, and `LAB7_314553032_task3_best_v10.pt` reaches `4079.485`.
+- 2026-05-23 00:00:00 CST: After two failed 1-step A2C tuning attempts, added batched 1-step TD updates to `a2c_pendulum.py`. The TD target remains one-step (`r + gamma V(s')`) when `--n-step 1`, but updates can now use multiple transitions via `--update-batch-size`. `python3 -m py_compile a2c_pendulum.py` passed; local `--help` remains blocked because this Mac Python does not have `gymnasium`.
 
 ## Current Task 1 Commands
 
@@ -102,13 +104,19 @@ python a2c_pendulum.py --mode train --num-episodes 1000 --no-wandb
 Train with W&B:
 
 ```bash
-python a2c_pendulum.py --mode train --num-episodes 10000 --actor-lr 3e-5 --critic-lr 3e-4 --entropy-weight 1e-4 --discount-factor 0.9 --n-step 5 --reward-scale 10.0 --init-log-std -0.5 --min-log-std -2.0 --max-log-std 0.5 --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_untilpass.pt --eval-interval 20000 --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt --target-eval-mean -150 --wandb-run-name pendulum-a2c-untilpass
+python a2c_pendulum.py --mode train --num-episodes 10000 --actor-lr 3e-5 --critic-lr 3e-4 --entropy-weight 1e-4 --discount-factor 0.95 --n-step 5 --reward-scale 10.0 --init-log-std -0.5 --min-log-std -2.0 --max-log-std 0.5 --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_gamma095.pt --eval-interval 20000 --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt --target-eval-mean -150 --wandb-run-name pendulum-a2c-gamma095
+```
+
+One-step TD ablation with batched updates:
+
+```bash
+python a2c_pendulum.py --mode train --num-episodes 10000 --actor-lr 3e-5 --critic-lr 3e-4 --entropy-weight 1e-4 --discount-factor 0.95 --n-step 1 --update-batch-size 32 --reward-scale 10.0 --max-grad-norm 0.5 --init-log-std -0.5 --min-log-std -2.0 --max-log-std 0.5 --model-path LAB7_314553032_task1_a2c_pendulum_trainbest_1step_batch.pt --eval-interval 20000 --eval-model-path LAB7_314553032_task1_a2c_pendulum_evalbest_1step_batch.pt --target-eval-mean -150 --wandb-run-name pendulum-a2c-1step-batch
 ```
 
 Evaluate the saved snapshot on seeds 0 to 19:
 
 ```bash
-python a2c_pendulum.py --mode eval --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_untilpass.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
+python a2c_pendulum.py --mode eval --model-path LAB7_314553032_task1_a2c_pendulum_evalbest_gamma095.pt --seed-start 0 --seed-end 19 --eval-episodes 20 --no-wandb
 ```
 
 Record one evaluation video, then run seed evaluation:
